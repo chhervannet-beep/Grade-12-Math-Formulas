@@ -4,13 +4,20 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw, History, X, MessageSquare, Trash2 } from "lucide-react";
 import { ChatMessage } from "../types";
 import MathRenderer from "./MathRenderer";
 
 interface AITutorProps {
   currentTopicTitle: string;
   currentTopicId: string;
+}
+
+interface ChatSession {
+  id: string;
+  topicTitle: string;
+  date: string;
+  messages: ChatMessage[];
 }
 
 const PRESET_PROMPTS = [
@@ -32,8 +39,74 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Load history on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("ai_tutor_history");
+    if (saved) {
+      try {
+        setChatSessions(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse chat history");
+      }
+    }
+  }, []);
+
+  const [currentSessionId, setCurrentSessionId] = useState<string>(Date.now().toString());
+
+  // Autosave current session
+  useEffect(() => {
+    if (messages.length > 1) {
+      setChatSessions(prev => {
+        const existingSessionIndex = prev.findIndex(s => s.id === currentSessionId);
+        let updated: ChatSession[];
+        
+        if (existingSessionIndex >= 0) {
+          updated = [...prev];
+          updated[existingSessionIndex] = {
+            ...updated[existingSessionIndex],
+            messages: messages,
+            date: new Date().toISOString()
+          };
+        } else {
+          updated = [
+            {
+              id: currentSessionId,
+              topicTitle: currentTopicTitle,
+              date: new Date().toISOString(),
+              messages: messages
+            },
+            ...prev
+          ];
+        }
+        
+        localStorage.setItem("ai_tutor_history", JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [messages, currentSessionId, currentTopicTitle]);
+
+  const loadSession = (session: ChatSession) => {
+    // Revive dates
+    const revivedMessages = session.messages.map(m => ({
+      ...m,
+      timestamp: new Date(m.timestamp)
+    }));
+    setMessages(revivedMessages);
+    setCurrentSessionId(session.id);
+    setShowHistory(false);
+  };
+
+  const deleteSession = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = chatSessions.filter(s => s.id !== id);
+    setChatSessions(updated);
+    localStorage.setItem("ai_tutor_history", JSON.stringify(updated));
+  };
 
   // Auto scroll to bottom of chat
   useEffect(() => {
@@ -108,11 +181,12 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
         timestamp: new Date()
       }
     ]);
+    setCurrentSessionId(Date.now().toString());
     setErrorMsg(null);
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl flex-1 w-full flex flex-col" id="ai-tutor-container">
+    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl flex-1 w-full flex flex-col relative" id="ai-tutor-container">
       {/* Header bar */}
       <div className="bg-black/20 px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -130,14 +204,77 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
           </div>
         </div>
 
-        <button
-          onClick={handleClearHistory}
-          className="text-slate-400 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10"
-          title="Clear Chat History"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowHistory(true)}
+            className="text-slate-400 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10"
+            title="View Chat History"
+          >
+            <History className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={handleClearHistory}
+            className="text-slate-400 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10"
+            title="Clear Chat & Start New"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+
+      {/* History Overlay Panel */}
+      {showHistory && (
+        <div className="absolute inset-x-0 bottom-0 top-[60px] bg-[#0a0502]/95 backdrop-blur-xl z-20 flex flex-col border-t border-white/5 animate-fade-in">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <h3 className="font-sans font-bold text-sm text-slate-200 flex items-center gap-2">
+              <History className="w-4 h-4 text-[#ff4e00]" />
+              ប្រវត្តិជជែក (Chat History)
+            </h3>
+            <button 
+              onClick={() => setShowHistory(false)}
+              className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
+            {chatSessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-3">
+                <MessageSquare className="w-8 h-8 opacity-20" />
+                <p className="text-xs font-sans">មិនមានប្រវត្តិជជែកពីមុនទេ</p>
+              </div>
+            ) : (
+              chatSessions.map((session) => (
+                <div 
+                  key={session.id}
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 transition cursor-pointer flex flex-col gap-2 group"
+                  onClick={() => loadSession(session)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-200 line-clamp-1">{session.topicTitle}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {new Date(session.date).toLocaleDateString('km-KH')} - {session.messages.length} សារ
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => deleteSession(session.id, e)}
+                      className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition opacity-0 group-hover:opacity-100"
+                      title="លុបចោល (Delete)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 line-clamp-2 italic border-l-2 border-white/10 pl-2">
+                    "{session.messages.length > 1 ? session.messages[1].content : "No query"}"
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Message history */}
       <div 

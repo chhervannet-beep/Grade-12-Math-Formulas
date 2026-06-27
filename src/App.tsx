@@ -125,30 +125,10 @@ export default function App() {
               <h1 className="font-sans font-bold text-white text-sm md:text-base leading-tight">
                 គណិតវិទ្យាថ្នាក់ទី១២ (Grade 12 Math Handbook)
               </h1>
-              <p className="text-[10px] text-slate-400 font-sans">
+              <p className="text-[10px] text-slate-400 font-sans hidden sm:block">
                 សៀវភៅមេរៀន និងរូបមន្តរូបរាងមិនកំណត់ ជាមួយការរៀនអន្តរកម្ម
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* Creator Info (Requested by user) */}
-        <div className="hidden md:flex items-center gap-3 px-4 py-1.5 bg-white/5 border border-white/10 rounded-xl max-w-sm lg:max-w-md xl:max-w-xl" id="creator-header-badge">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#ff4e00]/20 to-[#ff8c00]/20 border border-[#ff4e00]/30 flex items-center justify-center flex-shrink-0 shadow-sm shadow-[#ff4e00]/5">
-            <span className="text-[11px] text-[#ff8c00] font-bold">គ្រូ</span>
-          </div>
-          <div className="text-left font-sans">
-            <p className="text-[11px] font-bold text-slate-100 flex items-center gap-1.5 leading-tight">
-              <span>បង្កើតឡើងដោយ៖</span>
-              <span className="text-[#ff8c00] underline decoration-[#ff4e00]/30 underline-offset-2">លោកគ្រូ ឆយ សុវ៉ាន់ណេត</span>
-              <span className="text-slate-500 font-normal">|</span>
-              <span className="text-slate-300 font-medium text-[10px]">ឯកទេស គណិតវិទ្យា</span>
-            </p>
-            <p className="text-[9.5px] text-slate-400 mt-0.5 leading-none flex items-center gap-1">
-              <span>វិទ្យាល័យ ព្រះនរោត្តមសីហមុនី</span>
-              <span className="text-slate-500 font-normal">|</span>
-              <span>ទូរស័ព្ទ៖ <span className="font-mono text-slate-200 font-bold bg-white/5 px-1.5 py-0.5 rounded">០១៦ ៥៦៧ ៤៣៧</span></span>
-            </p>
           </div>
         </div>
 

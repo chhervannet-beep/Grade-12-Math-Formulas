@@ -107,7 +107,7 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl h-[460px] flex flex-col" id="ai-tutor-container">
+    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl h-[calc(100vh-280px)] min-h-[460px] max-h-[800px] flex flex-col" id="ai-tutor-container">
       {/* Header bar */}
       <div className="bg-black/20 px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -193,7 +193,7 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
               <p className="font-semibold">កំហុសក្នុងការតភ្ជាប់ (Connection Error)</p>
               <p className="text-[10px] text-rose-300 leading-snug">{errorMsg}</p>
               <p className="text-[9px] text-slate-400 leading-snug pt-1">
-                សូមប្រាកដថាអ្នកបានបន្ថែម <strong>GEMINI_API_KEY</strong> នៅក្នុងផ្ទាំង <strong>Settings &gt; Secrets</strong> នៃកម្មវិធី AI Studio។
+                សូមប្រាកដថាអ្នកបានបន្ថែម <strong>GEMINI_API_KEY</strong> នៅក្នុងផ្ទាំង <strong>Settings &gt; Secrets</strong> នៃកម្មវិធី AI Studio។ បើលោកអ្នកបាន Deploy ទៅកាន់ <strong>Vercel</strong> សូមចូលទៅកាន់ <strong>Settings &gt; Environment Variables</strong> ក្នុង Vercel ដើម្បីបន្ថែម API Key នេះ ហើយ <strong>Redeploy</strong> ម្តងទៀត។
               </p>
             </div>
           </div>

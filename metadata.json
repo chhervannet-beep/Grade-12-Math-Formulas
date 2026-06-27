@@ -1,0 +1,6 @@
+{
+  "name": "រូបមន្តគណិតវិទ្យាថ្នាក់ទី១២ - Grade 12 Math Formulas",
+  "description": "កម្មវិធីសិក្សារូបមន្តគណិតវិទ្យាថ្នាក់ទី១២ គ្រប់ជំពូកទាំង១២ ជាមួយឧបករណ៍ពិសោធន៍អន្តរកម្ម និងជំនួយការគ្រូបង្គោល AI សិក្សាជាភាសាខ្មែរ។ (Interactive Grade 12 math reference for all 12 Chapters with interactive playgrounds, comprehensive quizzes, and an AI tutor in Khmer)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

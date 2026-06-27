@@ -98,7 +98,7 @@ export default function App() {
   // (We now filter topics dynamically per-chapter in the sidebar loop)
 
   return (
-    <div className="min-h-screen bg-[#0a0502] text-slate-100 flex flex-col font-sans relative overflow-hidden" id="app-root">
+    <div className="h-[100dvh] w-full bg-[#0a0502] text-slate-100 flex flex-col font-sans relative overflow-hidden" id="app-root">
       {/* Atmospheric Background Gradients */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-[#3a1510] opacity-35 blur-[120px]"></div>
@@ -277,7 +277,7 @@ export default function App() {
         </aside>
 
         {/* Content Viewer (right side) */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 relative z-10" id="main-content-panel">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 relative z-10 flex flex-col" id="main-content-panel">
           {showQuiz ? (
             /* Quiz Mode rendering */
             <div className="max-w-3xl mx-auto py-4">
@@ -293,7 +293,7 @@ export default function App() {
             </div>
           ) : (
             /* Topic Reader Mode rendering */
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto flex-1 flex flex-col space-y-6 w-full">
               {/* Topic Title Header card */}
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -354,7 +354,7 @@ export default function App() {
               </div>
 
               {/* Display View based on active tab */}
-              <div className="transition-all duration-200">
+              <div className="transition-all duration-200 flex-1 flex flex-col">
                 {activeTab === "handbook" && (
                   /* 1. Handbook Reader */
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -534,7 +534,7 @@ export default function App() {
 
                 {activeTab === "ai-tutor" && (
                   /* 3. AI tutor chat session focused on selected topic */
-                  <div className="max-w-2xl mx-auto py-2 animate-fade-in">
+                  <div className="max-w-2xl w-full mx-auto py-2 animate-fade-in flex-1 flex flex-col min-h-[500px]">
                     <AITutor
                       currentTopicTitle={activeTopic.titleKh}
                       currentTopicId={activeTopic.id}

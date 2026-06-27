@@ -33,11 +33,16 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto scroll to bottom of chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
   }, [messages, isLoading]);
 
   const handleSendMessage = async (text: string) => {
@@ -107,7 +112,7 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl h-[calc(100vh-280px)] min-h-[460px] max-h-[800px] flex flex-col" id="ai-tutor-container">
+    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl flex-1 w-full flex flex-col" id="ai-tutor-container">
       {/* Header bar */}
       <div className="bg-black/20 px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -135,7 +140,10 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
       </div>
 
       {/* Message history */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin"
+      >
         {messages.map((m) => {
           const isUser = m.role === "user";
           return (
@@ -198,8 +206,6 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
             </div>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Preset suggestions (only show if no loading and just welcome message) */}

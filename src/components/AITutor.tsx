@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw, History, X, MessageSquare, Trash2 } from "lucide-react";
 import { ChatMessage } from "../types";
 import MathRenderer from "./MathRenderer";

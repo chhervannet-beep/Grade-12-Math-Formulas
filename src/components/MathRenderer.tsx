@@ -30,42 +30,102 @@ function renderLaTeX(latex: string, displayMode: boolean = false): React.ReactNo
 export default function MathRenderer({ content }: MathRendererProps) {
   // Simple custom parser to render math markdown beautifully
   const lines = content.split("\n");
+  const blocks: { type: string; lines: string[]; num?: string; itemContent?: string }[] = [];
 
-  const renderedElements = lines.map((line, index) => {
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
     const trimmedLine = line.trim();
 
+    if (trimmedLine.startsWith("|")) {
+      // It's a table! Group all consecutive lines starting with '|'
+      const tableLines = [trimmedLine];
+      i++;
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      blocks.push({ type: "table", lines: tableLines });
+      continue;
+    }
+
     if (trimmedLine === "") {
+      blocks.push({ type: "empty", lines: [line] });
+      i++;
+      continue;
+    }
+
+    if (trimmedLine.startsWith("### ")) {
+      blocks.push({ type: "header3", lines: [trimmedLine] });
+      i++;
+      continue;
+    }
+
+    if (trimmedLine.startsWith("#### ")) {
+      blocks.push({ type: "header4", lines: [trimmedLine] });
+      i++;
+      continue;
+    }
+
+    if (trimmedLine.startsWith("$$") && trimmedLine.endsWith("$$")) {
+      blocks.push({ type: "blockFormula", lines: [trimmedLine] });
+      i++;
+      continue;
+    }
+
+    if (trimmedLine.startsWith("* ") || trimmedLine.startsWith("- ")) {
+      blocks.push({ type: "bullet", lines: [trimmedLine] });
+      i++;
+      continue;
+    }
+
+    const numberedMatch = trimmedLine.match(/^(\d+)\.\s+(.*)$/);
+    if (numberedMatch) {
+      blocks.push({
+        type: "numbered",
+        lines: [trimmedLine],
+        num: numberedMatch[1],
+        itemContent: numberedMatch[2]
+      });
+      i++;
+      continue;
+    }
+
+    // Default: normal paragraph
+    blocks.push({ type: "paragraph", lines: [trimmedLine] });
+    i++;
+  }
+
+  const renderedElements = blocks.map((block, index) => {
+    if (block.type === "empty") {
       return <div key={index} className="h-2" />;
     }
 
-    // Header 3 (e.g. ### Title)
-    if (trimmedLine.startsWith("### ")) {
+    if (block.type === "header3") {
       return (
         <h3
           key={index}
           className="font-sans font-bold text-white text-base mt-6 mb-3 border-l-4 border-[#ff4e00] pl-3 leading-snug"
         >
-          {parseInline(trimmedLine.slice(4))}
+          {parseInline(block.lines[0].slice(4))}
         </h3>
       );
     }
 
-    // Header 4 (e.g. #### Title)
-    if (trimmedLine.startsWith("#### ")) {
+    if (block.type === "header4") {
       return (
         <h4
           key={index}
           className="font-sans font-semibold text-slate-200 text-xs mt-4 mb-2 flex items-center gap-1.5"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e00]"></span>
-          {parseInline(trimmedLine.slice(5))}
+          {parseInline(block.lines[0].slice(5))}
         </h4>
       );
     }
 
-    // Block formulas (e.g. $$formula$$)
-    if (trimmedLine.startsWith("$$") && trimmedLine.endsWith("$$")) {
-      const formula = trimmedLine.slice(2, -2);
+    if (block.type === "blockFormula") {
+      const formula = block.lines[0].slice(2, -2);
       return (
         <div
           key={index}
@@ -78,26 +138,81 @@ export default function MathRenderer({ content }: MathRendererProps) {
       );
     }
 
-    // Bullet points (e.g. * item)
-    if (trimmedLine.startsWith("* ") || trimmedLine.startsWith("- ")) {
+    if (block.type === "bullet") {
       return (
         <ul key={index} className="list-disc pl-5 space-y-1 mb-2">
           <li className="text-[11px] font-sans text-slate-300 leading-relaxed">
-            {parseInline(trimmedLine.slice(2))}
+            {parseInline(block.lines[0].slice(2))}
           </li>
         </ul>
       );
     }
 
-    // Numbered lists (e.g. 1. item)
-    const numberedMatch = trimmedLine.match(/^(\d+)\.\s+(.*)$/);
-    if (numberedMatch) {
-      const num = numberedMatch[1];
-      const itemContent = numberedMatch[2];
+    if (block.type === "numbered") {
       return (
         <div key={index} className="flex gap-2 text-[11px] font-sans text-slate-300 leading-relaxed mb-2">
-          <span className="text-[#ff8c00] font-bold">{num}.</span>
-          <div className="flex-1">{parseInline(itemContent)}</div>
+          <span className="text-[#ff8c00] font-bold">{block.num}.</span>
+          <div className="flex-1">{parseInline(block.itemContent || "")}</div>
+        </div>
+      );
+    }
+
+    if (block.type === "table") {
+      const tableRows = block.lines.map(line => {
+        const rawCells = line.split("|").map(cell => cell.trim());
+        if (rawCells[0] === "") rawCells.shift();
+        if (rawCells[rawCells.length - 1] === "") rawCells.pop();
+        return rawCells;
+      });
+
+      const separatorIndex = tableRows.findIndex(row =>
+        row.every(cell => cell.match(/^:?-+:?$/))
+      );
+
+      let alignments: ("left" | "center" | "right")[] = [];
+      if (separatorIndex !== -1) {
+        const separatorRow = tableRows[separatorIndex];
+        alignments = separatorRow.map(cell => {
+          if (cell.startsWith(":") && cell.endsWith(":")) return "center";
+          if (cell.endsWith(":")) return "right";
+          return "left";
+        });
+        tableRows.splice(separatorIndex, 1);
+      }
+
+      return (
+        <div key={index} className="my-4 overflow-x-auto rounded-xl border border-white/10 bg-black/30 shadow-md">
+          <table className="w-full border-collapse text-[11px] text-slate-300 font-sans">
+            <tbody>
+              {tableRows.map((row, rIdx) => {
+                const isHeader = rIdx === 0;
+                return (
+                  <tr
+                    key={rIdx}
+                    className={`${
+                      isHeader ? "bg-white/5 border-b border-white/10" : "hover:bg-white/5 border-b border-white/10 last:border-b-0"
+                    }`}
+                  >
+                    {row.map((cell, cIdx) => {
+                      const alignment = alignments[cIdx] || "center";
+                      const CellTag = isHeader ? "th" : "td";
+                      return (
+                        <CellTag
+                          key={cIdx}
+                          className={`px-3 py-2 border-r border-white/10 last:border-r-0 ${
+                            isHeader ? "font-bold text-orange-400 bg-white/5 text-center" : ""
+                          }`}
+                          style={{ textAlign: alignment }}
+                        >
+                          {parseInline(cell)}
+                        </CellTag>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       );
     }
@@ -105,7 +220,7 @@ export default function MathRenderer({ content }: MathRendererProps) {
     // Normal paragraph
     return (
       <p key={index} className="text-[11px] font-sans text-slate-300 leading-relaxed mb-3">
-        {parseInline(trimmedLine)}
+        {parseInline(block.lines[0])}
       </p>
     );
   });

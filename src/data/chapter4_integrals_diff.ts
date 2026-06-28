@@ -107,6 +107,28 @@ $$ \\int u dv = uv - \\int v du $$
       { label: "រូបមន្តប្តូរអថេរជំនួស u", formula: "∫ f(g(x))g'(x)dx = ∫ f(u)du", explanation: "វិធីសាស្ត្រសម្រួលកន្សោមដោយតាងអនុគមន៍ថ្មី" }
     ]
   },
+  {
+    id: "integral-indefinite-rational",
+    category: "indefinite-integral",
+    titleKh: "៥.៧ អាំងតេក្រាលនៃអនុគមន៍សនិទាន",
+    title: "Integration of Rational Functions",
+    contentMarkdown: `### អាំងតេក្រាលនៃអនុគមន៍សនិទាន (Integration of Rational Functions)
+ការគណនាអាំងតេក្រាលនៃប្រភាគសនិទាន $\\int \\frac{P(x)}{Q(x)} dx$ តម្រូវឱ្យបំបែកជាប្រភាគងាយ (Partial Fractions)។
+
+#### ១. ករណី $Q(x)$ មានឫសពិតផ្សេងៗគ្នា
+បើ $Q(x) = (ax + b)(cx + d) \\dots$ នោះគេអាចបំបែក៖
+$$ \\frac{P(x)}{Q(x)} = A(x) + \\frac{A_1}{ax + b} + \\frac{A_2}{cx + d} + \\dots $$
+*   បើដឺក្រេ $P(x) < Q(x)$ នោះ $A(x) = 0$
+*   បើដឺក្រេ $P(x) \\geq Q(x)$ នោះ $A(x)$ ជាពហុធាផលចែក
+
+#### ២. ករណី $Q(x)$ មានឫសឌុប ឬឫសជាន់
+បើ $Q(x) = (ax + b)^n$ នោះគេអាចបំបែក៖
+$$ \\frac{P(x)}{Q(x)} = A(x) + \\frac{A_1}{ax + b} + \\frac{A_2}{(ax + b)^2} + \\dots + \\frac{A_n}{(ax + b)^n} $$
+ដែល $A_1, A_2, \\dots, A_n$ ជាចំនួនថេរត្រូវកំណត់។`,
+    formulas: [
+      { label: "ការបំបែកជាប្រភាគងាយ", formula: "P(x)/Q(x) = A₁/(x-a) + A₂/(x-b)", explanation: "ដើម្បីគណនាអាំងតេក្រាលអនុគមន៍សនិទាន" }
+    ]
+  },
 
   // --- CHAPTER 6: DEFINITE INTEGRALS ---
   {
@@ -129,6 +151,25 @@ $$\\int_{a}^{b} f(x) dx = [F(x)]_a^b = F(b) - F(a)$$
     formulas: [
       { label: "រូបមន្ត Leibniz-Newton", formula: "∫_a^b f(x) dx = F(b) - F(a)", explanation: "ការគណនាតម្លៃអាំងតេក្រាលកំណត់ពី a ទៅ b" },
       { label: "លក្ខណៈ Chasles", formula: "∫_a^b + ∫_b^c = ∫_a^c", explanation: "ការបំបែកអាំងតេក្រាលតាមចំណុចកណ្តាល c" }
+    ]
+  },
+  {
+    id: "integral-definite-methods",
+    category: "definite-integral",
+    titleKh: "៦.៣-៦.៤ រូបមន្តប្តូរអថេរ និងអាំងតេក្រាលដោយផ្នែក",
+    title: "Substitution & By Parts (Definite)",
+    contentMarkdown: `### រូបមន្តប្តូរអថេរ និងអាំងតេក្រាលដោយផ្នែក (Definite Integrals Methods)
+#### ១. រូបមន្តប្តូរអថេរ (Integration by Substitution)
+បើ $u = g(x)$ ជាប់ និងមានដេរីវេលើ $[a, b]$ នោះគេបាន៖
+$$ \\int_{a}^{b} f[g(x)] g'(x) dx = \\int_{g(a)}^{g(b)} f(u) du $$
+*   **ចំណាំ**៖ ត្រូវប្តូរគោលអាំងតេក្រាល (ព្រំដែន) ពី $x$ ទៅ $u$ ជានិច្ចនៅពេលប្រើវិធីប្តូរអថេរចំពោះអាំងតេក្រាលកំណត់។
+
+#### ២. រូបមន្តអាំងតេក្រាលដោយផ្នែក (Integration by Parts)
+បើអនុគមន៍ $u(x)$ និង $v(x)$ មានដេរីវេជាប់លើចន្លោះ $[a, b]$ នោះគេបាន៖
+$$ \\int_{a}^{b} u(x) v'(x) dx = [u(x)v(x)]_a^b - \\int_{a}^{b} v(x) u'(x) dx $$`,
+    formulas: [
+      { label: "ប្តូរអថេរ (កំណត់)", formula: "∫_a^b f(g(x))g'(x)dx = ∫_g(a)^g(b) f(u)du", explanation: "ត្រូវចាំបាច់ប្តូរគោលអាំងតេក្រាល" },
+      { label: "ដោយផ្នែក (កំណត់)", formula: "∫_a^b u dv = [uv]_a^b - ∫_a^b v du", explanation: "គណនាតម្លៃ uv ពី a ទៅ b" }
     ]
   },
   {
@@ -211,6 +252,28 @@ $$ar^2 + br + c = 0 \\quad \\implies \\quad \\Delta = b^2 - 4ac$$
       { label: "ចម្លើយករណី Δ > 0", formula: "y = A·e^(r₁x) + B·e^(r₂x)", explanation: "ឫសសម្គាល់ផ្សេងគ្នាជាចំនួនពិតពីរ" },
       { label: "ចម្លើយករណី Δ = 0", formula: "y = (Ax + B)e^(rx)", explanation: "ឫសសម្គាល់ឌុបជាចំនួនពិត" },
       { label: "ចម្លើយករណី Δ < 0", formula: "y = e^(αx)(A cos βx + B sin βx)", explanation: "ឫសសម្គាល់ជាចំនួនកុំផ្លិចឆ្លាស់ α ± iβ" }
+    ]
+  },
+  {
+    id: "diff-eq-second-order-non-homo",
+    category: "diff-eq-2",
+    titleKh: "៨.៣ សមីការឌីផេរ៉ង់ស្យែលលំដាប់ទី២ មិនអូម៉ូសែន",
+    title: "2nd Order Non-Homogeneous",
+    contentMarkdown: `### សមីការឌីផេរ៉ង់ស្យែលលំដាប់ទី២ មិនអូម៉ូសែន
+មានទម្រង់ $ay'' + by' + cy = p(x)$ ដែល $p(x) \\neq 0$។
+
+#### វិធានដោះស្រាយ៖
+1.  **រកចម្លើយទូទៅនៃសមីការអូម៉ូសែន** ($ay'' + by' + cy = 0$) តាងដោយ $y_c$
+2.  **រកចម្លើយពិសេសមួយនៃសមីការមិនអូម៉ូសែន** ($ay'' + by' + cy = p(x)$) តាងដោយ $y_p$ ទៅតាមទម្រង់នៃអនុគមន៍ $p(x)$
+3.  **ចម្លើយទូទៅសរុប** គឺផលបូក៖ $y = y_c + y_p$
+
+#### ទម្រង់នៃចម្លើយពិសេស $y_p$៖
+*   បើ $p(x) = k$ (ចំនួនថេរ) $\\implies y_p = A$
+*   បើ $p(x) = ax^2 + bx + c$ $\\implies y_p = Ax^2 + Bx + C$
+*   បើ $p(x) = m e^{\\lambda x}$ $\\implies y_p = A e^{\\lambda x}$
+*   បើ $p(x) = a \\cos \\beta x + b \\sin \\beta x$ $\\implies y_p = A \\cos \\beta x + B \\sin \\beta x$`,
+    formulas: [
+      { label: "ចម្លើយសរុប", formula: "y = y_c + y_p", explanation: "ផលបូកចម្លើយអូម៉ូសែន និងចម្លើយពិសេស" }
     ]
   }
 ];

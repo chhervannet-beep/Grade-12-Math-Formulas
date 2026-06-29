@@ -7,7 +7,9 @@ const { Pool } = pg;
 // Function to create a new connection pool
 export const createPool = () => {
   const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
-  if (connectionString) {
+  const isPostgresUrl = connectionString && (connectionString.startsWith("postgres://") || connectionString.startsWith("postgresql://"));
+  
+  if (isPostgresUrl) {
     return new Pool({
       connectionString,
       ssl: connectionString.includes("supabase") ? { rejectUnauthorized: false } : false,

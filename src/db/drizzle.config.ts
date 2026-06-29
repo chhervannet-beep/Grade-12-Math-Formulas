@@ -5,8 +5,9 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+const isPostgresUrl = connectionString && (connectionString.startsWith("postgres://") || connectionString.startsWith("postgresql://"));
 
-const dbCredentials = connectionString 
+const dbCredentials = isPostgresUrl 
   ? {
       url: connectionString,
       ssl: connectionString.includes("supabase") ? { rejectUnauthorized: false } : false,
@@ -19,7 +20,7 @@ const dbCredentials = connectionString
       ssl: false,
     };
 
-if (!connectionString) {
+if (!isPostgresUrl) {
   if (!process.env.SQL_HOST) {
     throw new Error("SQL_HOST or DATABASE_URL must be set in environment variables.");
   }

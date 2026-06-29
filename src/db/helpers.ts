@@ -8,23 +8,53 @@ import { eq, and } from "drizzle-orm";
  */
 export async function getOrCreateUser(uid: string, email: string) {
   try {
-    const result = await db
-      .insert(users)
-      .values({
-        uid,
-        email,
-      })
-      .onConflictDoUpdate({
-        target: users.uid,
-        set: {
-          email,
-        },
-      })
-      .returning();
+    // 1. Try to find the user first
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.uid, uid))
+      .limit(1);
 
-    return result[0];
+    if (existing.length > 0) {
+      const user = existing[0];
+      // If email has changed, update it
+      if (user.email !== email) {
+        const updated = await db
+          .update(users)
+          .set({ email })
+          .where(eq(users.uid, uid))
+          .returning();
+        return updated[0] || user;
+      }
+      return user;
+    }
+
+    // 2. If not found, try to insert
+    try {
+      const inserted = await db
+        .insert(users)
+        .values({
+          uid,
+          email,
+        })
+        .returning();
+      return inserted[0];
+    } catch (insertError) {
+      // In case of a race condition where the user was inserted in another request concurrently,
+      // try to query them one more time before failing.
+      const secondCheck = await db
+        .select()
+        .from(users)
+        .where(eq(users.uid, uid))
+        .limit(1);
+      
+      if (secondCheck.length > 0) {
+        return secondCheck[0];
+      }
+      throw insertError;
+    }
   } catch (error) {
-    console.error("Database upsert user failed:", error);
+    console.error("Database getOrCreateUser failed:", error);
     throw new Error("រក្សាទុកព័ត៌មានអ្នកប្រើប្រាស់បរាជ័យ (Failed to sync user)", { cause: error });
   }
 }

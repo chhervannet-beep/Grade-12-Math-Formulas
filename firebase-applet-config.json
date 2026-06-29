@@ -3,6 +3,7 @@
   "appId": "1:93509350718:web:b2a67287db4d046fe0286f",
   "apiKey": "AIzaSyBMSLJQwihFuNtBm18pxgH8LvbvpSkH-cM",
   "authDomain": "modular-env-25xj8.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-grade12mathformu-a93fd626-74e2-4b41-8b62-8836bb7516ef",
   "storageBucket": "modular-env-25xj8.firebasestorage.app",
   "messagingSenderId": "93509350718",
   "measurementId": ""

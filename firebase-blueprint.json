@@ -1,0 +1,28 @@
+{
+  "__version": "1.0",
+  "collections": {
+    "users": {
+      "__docId": "{uid}",
+      "email": "string",
+      "createdAt": "timestamp"
+    },
+    "documents": {
+      "__docId": "{documentId}",
+      "userId": "string",
+      "name": "string",
+      "type": "string",
+      "fileType": "string",
+      "size": "number",
+      "content": "string",
+      "createdAt": "timestamp"
+    },
+    "chatSessions": {
+      "__docId": "{sessionId}",
+      "userId": "string",
+      "topicTitle": "string",
+      "date": "string",
+      "createdAt": "timestamp",
+      "messages": "array"
+    }
+  }
+}

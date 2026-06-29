@@ -7,8 +7,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw, History, X, MessageSquare, Trash2, Cloud, CloudOff, Database } from "lucide-react";
 import { ChatMessage } from "../types";
 import MathRenderer from "./MathRenderer";
-import { auth } from "../lib/firebase.ts";
+import { auth, db } from "../lib/firebase.ts";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { collection, doc, setDoc, getDocs, query, where, deleteDoc } from "firebase/firestore";
 
 interface AITutorProps {
   currentTopicTitle: string;
@@ -107,15 +108,17 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
   const syncSessionToDB = async (session: ChatSession) => {
     if (!auth.currentUser) return;
     try {
-      const token = await auth.currentUser.getIdToken();
-      await fetch("/api/chat-sessions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(session)
-      });
+      const sessionRef = doc(db, "chatSessions", session.id);
+      await setDoc(sessionRef, {
+        userId: auth.currentUser.uid,
+        topicTitle: session.topicTitle,
+        date: session.date,
+        messages: session.messages.map(m => ({
+          ...m,
+          timestamp: m.timestamp.toISOString()
+        })),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
     } catch (e) {
       console.error("Failed to sync session to DB:", e);
     }
@@ -127,36 +130,40 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
       if (!user) return;
       setIsSyncing(true);
       try {
-        const token = await user.getIdToken();
-        const response = await fetch("/api/chat-sessions", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const q = query(collection(db, "chatSessions"), where("userId", "==", user.uid));
+        const snapshot = await getDocs(q);
+        const sessionsList: ChatSession[] = [];
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          sessionsList.push({
+            id: docSnap.id,
+            topicTitle: data.topicTitle,
+            date: data.date,
+            messages: data.messages || []
+          });
         });
-        if (response.ok) {
-          const sessionsList: ChatSession[] = await response.json();
-          setChatSessions(sessionsList);
-          
-          // Match current topic to see if we have an active session in DB
-          const matchingSession = sessionsList.find(s => s.topicTitle === currentTopicTitle);
-          if (matchingSession) {
-            setMessages(matchingSession.messages.map(m => ({
-              ...m,
-              timestamp: new Date(m.timestamp)
-            })));
-            setCurrentSessionId(matchingSession.id);
-          } else {
-            // Start fresh for this topic
-            setMessages([
-              {
-                id: "welcome",
-                role: "model",
-                content: `ជំរាបសួរ! ខ្ញុំជាគ្រូជំនួយការគណិតវិទ្យា AI របស់អ្នក។ ខ្ញុំអាចជួយពន្យល់ពីរូបមន្ត ដំណោះស្រាយលំហាត់ និងទ្រឹស្តីបទផ្សេងៗអំពី **${currentTopicTitle}** ឬឆ្លើយសំណួរទូទៅនានា។ តើអ្នកមានចម្ងល់ត្រង់ណាដែរ?`,
-                timestamp: new Date()
-              }
-            ]);
-            setCurrentSessionId(Date.now().toString());
-          }
+        
+        setChatSessions(sessionsList);
+        
+        // Match current topic to see if we have an active session in DB
+        const matchingSession = sessionsList.find(s => s.topicTitle === currentTopicTitle);
+        if (matchingSession) {
+          setMessages(matchingSession.messages.map(m => ({
+            ...m,
+            timestamp: new Date(m.timestamp)
+          })));
+          setCurrentSessionId(matchingSession.id);
+        } else {
+          // Start fresh for this topic
+          setMessages([
+            {
+              id: "welcome",
+              role: "model",
+              content: `ជំរាបសួរ! ខ្ញុំជាគ្រូជំនួយការគណិតវិទ្យា AI របស់អ្នក។ ខ្ញុំអាចជួយពន្យល់ពីរូបមន្ត ដំណោះស្រាយលំហាត់ និងទ្រឹស្តីបទផ្សេងៗអំពី **${currentTopicTitle}** ឬឆ្លើយសំណួរទូទៅនានា។ តើអ្នកមានចម្ងល់ត្រង់ណាដែរ?`,
+              timestamp: new Date()
+            }
+          ]);
+          setCurrentSessionId(Date.now().toString());
         }
       } catch (e) {
         console.error("Failed to sync chat sessions from DB:", e);
@@ -269,13 +276,7 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
 
     if (user) {
       try {
-        const token = await user.getIdToken();
-        await fetch(`/api/chat-sessions/${id}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        await deleteDoc(doc(db, "chatSessions", id));
       } catch (e) {
         console.error("Failed to delete session from DB:", e);
       }

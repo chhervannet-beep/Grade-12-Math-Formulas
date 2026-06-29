@@ -24,8 +24,9 @@ import {
 } from "lucide-react";
 import { BackendDocument } from "../types";
 import MathRenderer from "./MathRenderer";
-import { auth, googleAuthProvider } from "../lib/firebase.ts";
+import { auth, googleAuthProvider, db } from "../lib/firebase.ts";
 import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from "firebase/auth";
+import { collection, doc, setDoc, getDocs, query, where, deleteDoc } from "firebase/firestore";
 
 export default function DocumentLibrary() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -74,17 +75,22 @@ export default function DocumentLibrary() {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const token = await currentUser.getIdToken();
-      const response = await fetch("/api/documents", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const q = query(collection(db, "documents"), where("userId", "==", currentUser.uid));
+      const snapshot = await getDocs(q);
+      const docsList: BackendDocument[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        docsList.push({
+          id: docSnap.id,
+          name: data.name,
+          type: data.type as "file" | "note",
+          fileType: data.fileType,
+          size: data.size,
+          content: data.content,
+          createdAt: data.createdAt
+        });
       });
-      if (!response.ok) {
-        throw new Error("ការភ្ជាប់ទៅកាន់ម៉ាស៊ីនមេមានបញ្ហា (Failed to connect to the backend server)");
-      }
-      const data = await response.json();
-      setDocuments(data);
+      setDocuments(docsList);
     } catch (err: any) {
       console.error("Error fetching documents:", err);
       setErrorMsg(err.message || "មានបញ្ហាក្នុងការទាញយកឯកសារពី Backend");
@@ -175,28 +181,27 @@ export default function DocumentLibrary() {
         const result = event.target?.result;
         if (!result) throw new Error("មិនអាចអានឯកសារបានទេ (Failed to read file)");
 
-        const token = await user.getIdToken();
-        const response = await fetch("/api/documents", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: file.name,
-            type: "file",
-            fileType: file.type || "application/octet-stream",
-            size: file.size,
-            content: result.toString(),
-          }),
-        });
+        const docRef = doc(collection(db, "documents"));
+        const newDocPayload = {
+          userId: user.uid,
+          name: file.name,
+          type: "file" as "file" | "note",
+          fileType: file.type || "application/octet-stream",
+          size: file.size,
+          content: result.toString(),
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(docRef, newDocPayload);
 
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "ការរក្សាទុកឯកសារបរាជ័យ (Failed to save file to server)");
-        }
-
-        const newDoc = await response.json();
+        const newDoc: BackendDocument = { 
+          id: docRef.id, 
+          name: newDocPayload.name,
+          type: newDocPayload.type,
+          fileType: newDocPayload.fileType,
+          size: newDocPayload.size,
+          content: newDocPayload.content,
+          createdAt: newDocPayload.createdAt
+        };
         setDocuments((prev) => [newDoc, ...prev]);
         setSuccessMsg("បានរក្សាទុកឯកសារជោគជ័យ! (File saved successfully on the backend!)");
       } catch (err: any) {
@@ -237,29 +242,29 @@ export default function DocumentLibrary() {
     setErrorMsg(null);
 
     try {
-      const token = await user.getIdToken();
       const contentSize = new Blob([noteContent]).size;
 
-      const response = await fetch("/api/documents", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: noteTitle.trim() + ".md",
-          type: "note",
-          fileType: "text/markdown",
-          size: contentSize,
-          content: noteContent,
-        }),
-      });
+      const docRef = doc(collection(db, "documents"));
+      const newDocPayload = {
+        userId: user.uid,
+        name: noteTitle,
+        type: "note" as "file" | "note",
+        fileType: "text/markdown",
+        size: contentSize,
+        content: noteContent,
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(docRef, newDocPayload);
 
-      if (!response.ok) {
-        throw new Error("ការរក្សាទុកកំណត់ត្រាបរាជ័យ (Failed to save note to server)");
-      }
-
-      const newDoc = await response.json();
+      const newDoc: BackendDocument = { 
+        id: docRef.id,
+        name: newDocPayload.name,
+        type: newDocPayload.type,
+        fileType: newDocPayload.fileType,
+        size: newDocPayload.size,
+        content: newDocPayload.content,
+        createdAt: newDocPayload.createdAt
+      };
       setDocuments((prev) => [newDoc, ...prev]);
       setSuccessMsg("បានរក្សាទុកកំណត់ត្រាជោគជ័យ! (Note saved successfully on the backend!)");
 
@@ -287,17 +292,7 @@ export default function DocumentLibrary() {
 
     setErrorMsg(null);
     try {
-      const token = await user.getIdToken();
-      const response = await fetch(`/api/documents/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("ការលុបឯកសារបរាជ័យ (Failed to delete document from the server)");
-      }
+      await deleteDoc(doc(db, "documents", id));
 
       setDocuments((prev) => prev.filter((doc) => doc.id !== id));
       if (selectedDoc?.id === id) {

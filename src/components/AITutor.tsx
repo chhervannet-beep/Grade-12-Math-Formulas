@@ -4,9 +4,11 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw, History, X, MessageSquare, Trash2 } from "lucide-react";
+import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw, History, X, MessageSquare, Trash2, Cloud, CloudOff, Database } from "lucide-react";
 import { ChatMessage } from "../types";
 import MathRenderer from "./MathRenderer";
+import { auth } from "../lib/firebase.ts";
+import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
 interface AITutorProps {
   currentTopicTitle: string;
@@ -28,6 +30,9 @@ const PRESET_PROMPTS = [
 ];
 
 export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorProps) {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
     const saved = localStorage.getItem("ai_tutor_history");
     if (saved) {
@@ -90,8 +95,83 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isFirstMount = useRef(true);
 
-  // Handle topic change
+  // Listen to Auth State
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync session to DB helper
+  const syncSessionToDB = async (session: ChatSession) => {
+    if (!auth.currentUser) return;
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await fetch("/api/chat-sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(session)
+      });
+    } catch (e) {
+      console.error("Failed to sync session to DB:", e);
+    }
+  };
+
+  // Fetch from DB if authenticated
+  useEffect(() => {
+    const fetchDBSessions = async () => {
+      if (!user) return;
+      setIsSyncing(true);
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch("/api/chat-sessions", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const sessionsList: ChatSession[] = await response.json();
+          setChatSessions(sessionsList);
+          
+          // Match current topic to see if we have an active session in DB
+          const matchingSession = sessionsList.find(s => s.topicTitle === currentTopicTitle);
+          if (matchingSession) {
+            setMessages(matchingSession.messages.map(m => ({
+              ...m,
+              timestamp: new Date(m.timestamp)
+            })));
+            setCurrentSessionId(matchingSession.id);
+          } else {
+            // Start fresh for this topic
+            setMessages([
+              {
+                id: "welcome",
+                role: "model",
+                content: `ជំរាបសួរ! ខ្ញុំជាគ្រូជំនួយការគណិតវិទ្យា AI របស់អ្នក។ ខ្ញុំអាចជួយពន្យល់ពីរូបមន្ត ដំណោះស្រាយលំហាត់ និងទ្រឹស្តីបទផ្សេងៗអំពី **${currentTopicTitle}** ថ្នាក់ទី១២ តាមសៀវភៅក្រសួង។ តើអ្នកមានចម្ងល់ត្រង់ណាដែរ?`,
+                timestamp: new Date()
+              }
+            ]);
+            setCurrentSessionId(Date.now().toString());
+          }
+        }
+      } catch (e) {
+        console.error("Failed to sync chat sessions from DB:", e);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
+    fetchDBSessions();
+  }, [user, currentTopicId, currentTopicTitle]);
+
+  // Handle topic change for non-authenticated (anonymous) users
+  useEffect(() => {
+    if (user) return; // DB sync will handle this
+
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
@@ -127,7 +207,7 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
       ]);
       setCurrentSessionId(Date.now().toString());
     }
-  }, [currentTopicId, currentTopicTitle]);
+  }, [currentTopicId, currentTopicTitle, user]);
 
   // Autosave current session
   useEffect(() => {
@@ -156,10 +236,19 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
         }
         
         localStorage.setItem("ai_tutor_history", JSON.stringify(updated));
+
+        // Sync with Firestore/Cloud SQL through secure API
+        if (user) {
+          const activeSession = updated.find(s => s.id === currentSessionId);
+          if (activeSession) {
+            syncSessionToDB(activeSession);
+          }
+        }
+
         return updated;
       });
     }
-  }, [messages, currentSessionId, currentTopicTitle]);
+  }, [messages, currentSessionId, currentTopicTitle, user]);
 
   const loadSession = (session: ChatSession) => {
     // Revive dates
@@ -172,11 +261,25 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
     setShowHistory(false);
   };
 
-  const deleteSession = (id: string, e: React.MouseEvent) => {
+  const deleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = chatSessions.filter(s => s.id !== id);
     setChatSessions(updated);
     localStorage.setItem("ai_tutor_history", JSON.stringify(updated));
+
+    if (user) {
+      try {
+        const token = await user.getIdToken();
+        await fetch(`/api/chat-sessions/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+      } catch (e) {
+        console.error("Failed to delete session from DB:", e);
+      }
+    }
 
     // If the active session is deleted, start fresh
     if (currentSessionId === id) {
@@ -281,9 +384,21 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
             <h4 className="text-xs font-sans font-bold text-white tracking-wide">
               គ្រូជំនួយគណិតវិទ្យា AI (Khmer Math AI Tutor)
             </h4>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e00] animate-ping"></span>
               <span className="text-[9px] text-slate-400 font-mono">Gemini 2.5 Flash | Active</span>
+              <span className="text-slate-600 text-[9px] font-mono">|</span>
+              {user ? (
+                <div className="flex items-center gap-1 text-emerald-400 text-[9px] font-mono" title="Synced to Firebase/Cloud SQL DB">
+                  <Cloud className="w-2.5 h-2.5 text-emerald-400" />
+                  <span>Cloud Synced</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-amber-500 text-[9px] font-mono" title="Local storage only. Login to sync with Firebase.">
+                  <CloudOff className="w-2.5 h-2.5 text-amber-500" />
+                  <span>Local Only</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -323,6 +438,25 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
+            {!user ? (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-3 text-amber-200 text-[11px] font-sans flex items-start gap-2">
+                <CloudOff className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">រក្សាទុកក្នុងឧបករណ៍នេះតែប៉ុណ្ណោះ</p>
+                  <p className="text-amber-300/80 leading-relaxed text-[10px] mt-0.5">
+                    សូមចូលទៅកាន់ផ្ទាំង <strong>«ឯកសាររបស់ខ្ញុំ»</strong> រួចធ្វើការ Login ជាមួយ Google ដើម្បីរក្សាទុកប្រវត្តិនៃការសន្ទនាទាំងស្រុងទៅក្នុងគណនី Firebase និងមិនបាត់បង់ទិន្នន័យឡើយ។
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 mb-3 text-emerald-200 text-[10px] font-sans flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-emerald-400 flex-shrink-0 animate-pulse" />
+                <div>
+                  <p className="font-semibold">ប្រវត្តិជជែករបស់អ្នកត្រូវបានរក្សាទុកក្នុង Firebase Cloud DB</p>
+                </div>
+              </div>
+            )}
+
             {chatSessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-3">
                 <MessageSquare className="w-8 h-8 opacity-20" />

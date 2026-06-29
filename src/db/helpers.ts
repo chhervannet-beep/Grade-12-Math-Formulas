@@ -1,5 +1,5 @@
 import { db } from "./index.ts";
-import { users, documents } from "./schema.ts";
+import { users, documents, chatSessions, chatMessages } from "./schema.ts";
 import { eq, and } from "drizzle-orm";
 
 /**
@@ -26,6 +26,122 @@ export async function getOrCreateUser(uid: string, email: string) {
   } catch (error) {
     console.error("Database upsert user failed:", error);
     throw new Error("រក្សាទុកព័ត៌មានអ្នកប្រើប្រាស់បរាជ័យ (Failed to sync user)", { cause: error });
+  }
+}
+
+/**
+ * Saves or updates a chat session and its nested messages.
+ */
+export async function saveOrUpdateChatSession(
+  userId: number,
+  session: {
+    id: string;
+    topicTitle: string;
+    date: string;
+    messages: {
+      role: string;
+      content: string;
+      timestamp: string | Date;
+    }[];
+  }
+) {
+  try {
+    // 1. Upsert session
+    await db
+      .insert(chatSessions)
+      .values({
+        id: session.id,
+        userId,
+        topicTitle: session.topicTitle,
+        date: session.date,
+      })
+      .onConflictDoUpdate({
+        target: chatSessions.id,
+        set: {
+          topicTitle: session.topicTitle,
+          date: session.date,
+        },
+      });
+
+    // 2. Delete existing messages
+    await db.delete(chatMessages).where(eq(chatMessages.sessionId, session.id));
+
+    // 3. Insert new messages
+    if (session.messages.length > 0) {
+      await db.insert(chatMessages).values(
+        session.messages.map((m) => ({
+          sessionId: session.id,
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+        }))
+      );
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Database save chat session failed:", error);
+    throw new Error("រក្សាទុកប្រវត្តិនៃការជជែកបរាជ័យ (Failed to save chat history)", { cause: error });
+  }
+}
+
+/**
+ * Fetches all chat sessions and their nested messages belonging to a user ID.
+ */
+export async function getUserChatSessions(userId: number) {
+  try {
+    const sessions = await db
+      .select()
+      .from(chatSessions)
+      .where(eq(chatSessions.userId, userId))
+      .orderBy(chatSessions.createdAt);
+
+    const result = [];
+    for (const s of sessions) {
+      const messages = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.sessionId, s.id))
+        .orderBy(chatMessages.timestamp);
+
+      result.push({
+        id: s.id,
+        topicTitle: s.topicTitle,
+        date: s.date,
+        messages: messages.map((m) => ({
+          id: m.id.toString(),
+          role: m.role as "user" | "model" | "system",
+          content: m.content,
+          timestamp: m.timestamp,
+        })),
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Database fetch chat sessions failed:", error);
+    throw new Error("ទាញយកប្រវត្តិនៃការជជែកបរាជ័យ (Failed to fetch chat sessions)", { cause: error });
+  }
+}
+
+/**
+ * Deletes a chat session owned by the specified user.
+ */
+export async function deleteUserChatSession(userId: number, sessionId: string) {
+  try {
+    const result = await db
+      .delete(chatSessions)
+      .where(and(eq(chatSessions.id, sessionId), eq(chatSessions.userId, userId)))
+      .returning();
+
+    if (result.length === 0) {
+      throw new Error("រកមិនឃើញប្រវត្តិនៃការជជែកដែលត្រូវលុបទេ (Chat session not found or access denied)");
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Database delete chat session failed:", error);
+    throw new Error("លុបប្រវត្តិនៃការជជែកបរាជ័យ (Failed to delete chat session)", { cause: error });
   }
 }
 

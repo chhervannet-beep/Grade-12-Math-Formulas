@@ -5,7 +5,15 @@ import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { requireAuth, AuthRequest } from "./src/middleware/auth.ts";
-import { getOrCreateUser, getUserDocuments, saveUserDocument, deleteUserDocument } from "./src/db/helpers.ts";
+import { 
+  getOrCreateUser, 
+  getUserDocuments, 
+  saveUserDocument, 
+  deleteUserDocument,
+  getUserChatSessions,
+  saveOrUpdateChatSession,
+  deleteUserChatSession
+} from "./src/db/helpers.ts";
 
 dotenv.config();
 
@@ -172,6 +180,76 @@ app.delete("/api/documents/:id", requireAuth, async (req: AuthRequest, res) => {
   } catch (error: any) {
     console.error("Error in DELETE /api/documents:", error);
     res.status(500).json({ error: error.message || "មិនអាចលុបឯកសារបានទេ (Failed to delete document)" });
+  }
+});
+
+// API to list all chat sessions for a user
+app.get("/api/chat-sessions", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userUid = req.user?.uid;
+    const userEmail = req.user?.email || "";
+    if (!userUid) {
+      return res.status(401).json({ error: "Unauthorized: Missing user UID" });
+    }
+
+    const dbUser = await getOrCreateUser(userUid, userEmail);
+    const sessions = await getUserChatSessions(dbUser.id);
+    res.json(sessions);
+  } catch (error: any) {
+    console.error("Error in GET /api/chat-sessions:", error);
+    res.status(500).json({ error: "មិនអាចទាញយកប្រវត្តិនៃការជជែកបានទេ (Failed to retrieve chat sessions)" });
+  }
+});
+
+// API to save or update a chat session for a user
+app.post("/api/chat-sessions", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userUid = req.user?.uid;
+    const userEmail = req.user?.email || "";
+    if (!userUid) {
+      return res.status(401).json({ error: "Unauthorized: Missing user UID" });
+    }
+
+    const { id, topicTitle, date, messages } = req.body;
+    if (!id || !topicTitle || !date || !Array.isArray(messages)) {
+      return res.status(400).json({ error: "Missing required session fields" });
+    }
+
+    const dbUser = await getOrCreateUser(userUid, userEmail);
+    await saveOrUpdateChatSession(dbUser.id, {
+      id,
+      topicTitle,
+      date,
+      messages,
+    });
+
+    res.json({ success: true, message: "រក្សាទុកប្រវត្តិនៃការជជែកជោគជ័យ (Chat session saved successfully)" });
+  } catch (error: any) {
+    console.error("Error in POST /api/chat-sessions:", error);
+    res.status(500).json({ error: "មិនអាចរក្សាទុកប្រវត្តិនៃការជជែកបានទេ (Failed to save chat session)" });
+  }
+});
+
+// API to delete a chat session for a user
+app.delete("/api/chat-sessions/:id", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userUid = req.user?.uid;
+    const userEmail = req.user?.email || "";
+    if (!userUid) {
+      return res.status(401).json({ error: "Unauthorized: Missing user UID" });
+    }
+
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: "លេខសម្គាល់មិនត្រឹមត្រូវ (Invalid session ID)" });
+    }
+
+    const dbUser = await getOrCreateUser(userUid, userEmail);
+    await deleteUserChatSession(dbUser.id, id);
+    res.json({ success: true, message: "លុបប្រវត្តិនៃការជជែកជោគជ័យ (Chat session deleted successfully)" });
+  } catch (error: any) {
+    console.error("Error in DELETE /api/chat-sessions:", error);
+    res.status(500).json({ error: error.message || "មិនអាចលុបប្រវត្តិនៃការជជែកបានទេ (Failed to delete chat session)" });
   }
 });
 

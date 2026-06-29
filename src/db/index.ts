@@ -6,6 +6,14 @@ const { Pool } = pg;
 
 // Function to create a new connection pool
 export const createPool = () => {
+  const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+  if (connectionString) {
+    return new Pool({
+      connectionString,
+      ssl: connectionString.includes("supabase") ? { rejectUnauthorized: false } : false,
+      connectionTimeoutMillis: 15000,
+    });
+  }
   return new Pool({
     host: process.env.SQL_HOST,
     user: process.env.SQL_USER,

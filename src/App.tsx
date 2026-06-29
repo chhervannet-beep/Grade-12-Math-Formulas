@@ -43,10 +43,11 @@ import {
 } from "./components/ChapterPlaygrounds";
 import AITutor from "./components/AITutor";
 import MathQuiz from "./components/MathQuiz";
+import DocumentLibrary from "./components/DocumentLibrary";
 
 export default function App() {
   const [activeTopicId, setActiveTopicId] = useState<string>("complex-review");
-  const [activeTab, setActiveTab] = useState<"handbook" | "playground" | "ai-tutor">("handbook");
+  const [activeTab, setActiveTab] = useState<"handbook" | "playground" | "ai-tutor" | "documents">("handbook");
   const [showQuiz, setShowQuiz] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -350,6 +351,18 @@ export default function App() {
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>សួរគ្រូ AI</span>
                   </button>
+
+                  <button
+                    onClick={() => setActiveTab("documents")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-semibold transition ${
+                      activeTab === "documents"
+                        ? "bg-[#ff4e00] text-white shadow-md shadow-[#ff4e00]/25"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <BookMarked className="w-3.5 h-3.5" />
+                    <span>ឯកសាររបស់ខ្ញុំ</span>
+                  </button>
                 </div>
               </div>
 
@@ -539,6 +552,13 @@ export default function App() {
                       currentTopicTitle={activeTopic.titleKh}
                       currentTopicId={activeTopic.id}
                     />
+                  </div>
+                )}
+
+                {activeTab === "documents" && (
+                  /* 4. Document Library for storing files and custom formulas/notes on the backend */
+                  <div className="w-full py-2 animate-fade-in flex-1 flex flex-col">
+                    <DocumentLibrary />
                   </div>
                 )}
               </div>

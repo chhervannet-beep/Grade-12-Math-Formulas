@@ -26,3 +26,13 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
 }
+
+export interface BackendDocument {
+  id: string;
+  name: string;
+  type: "note" | "file";
+  fileType: string;
+  size: number;
+  content: string; // Markdown text or Base64/Raw file string
+  createdAt: string;
+}

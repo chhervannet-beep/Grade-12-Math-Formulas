@@ -28,35 +28,106 @@ const PRESET_PROMPTS = [
 ];
 
 export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "model",
-      content: "ជំរាបសួរ! ខ្ញុំជាគ្រូជំនួយការគណិតវិទ្យា AI របស់អ្នក។ ខ្ញុំអាចជួយពន្យល់ពីរូបមន្ត ដំណោះស្រាយលំហាត់ និងទ្រឹស្តីបទផ្សេងៗអំពី **ចំនួនកុំផ្លិច (Complex Numbers)** និង **លីមីត (Limits)** ថ្នាក់ទី១២ តាមសៀវភៅក្រសួង។ តើអ្នកមានចម្ងល់ត្រង់ណាដែរ?",
-      timestamp: new Date()
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
+    const saved = localStorage.getItem("ai_tutor_history");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse chat history on init", e);
+      }
     }
-  ]);
+    return [];
+  });
+
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
+    const saved = localStorage.getItem("ai_tutor_history");
+    if (saved) {
+      try {
+        const sessions: ChatSession[] = JSON.parse(saved);
+        const matchingSession = sessions.find(s => s.topicTitle === currentTopicTitle);
+        if (matchingSession) {
+          return matchingSession.id;
+        }
+      } catch (e) {
+        console.error("Failed to get current session ID on init", e);
+      }
+    }
+    return Date.now().toString();
+  });
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem("ai_tutor_history");
+    if (saved) {
+      try {
+        const sessions: ChatSession[] = JSON.parse(saved);
+        const matchingSession = sessions.find(s => s.topicTitle === currentTopicTitle);
+        if (matchingSession) {
+          return matchingSession.messages.map(m => ({
+            ...m,
+            timestamp: new Date(m.timestamp)
+          }));
+        }
+      } catch (e) {
+        console.error("Failed to revive messages on init", e);
+      }
+    }
+    return [
+      {
+        id: "welcome",
+        role: "model",
+        content: `ជំរាបសួរ! ខ្ញុំជាគ្រូជំនួយការគណិតវិទ្យា AI របស់អ្នក។ ខ្ញុំអាចជួយពន្យល់ពីរូបមន្ត ដំណោះស្រាយលំហាត់ និងទ្រឹស្តីបទផ្សេងៗអំពី **${currentTopicTitle}** ថ្នាក់ទី១២ តាមសៀវភៅក្រសួង។ តើអ្នកមានចម្ងល់ត្រង់ណាដែរ?`,
+        timestamp: new Date()
+      }
+    ];
+  });
+
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstMount = useRef(true);
 
-  // Load history on mount
+  // Handle topic change
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
     const saved = localStorage.getItem("ai_tutor_history");
+    let sessionsList: ChatSession[] = chatSessions;
     if (saved) {
       try {
-        setChatSessions(JSON.parse(saved));
+        sessionsList = JSON.parse(saved);
+        setChatSessions(sessionsList);
       } catch (e) {
-        console.error("Failed to parse chat history");
+        console.error(e);
       }
     }
-  }, []);
 
-  const [currentSessionId, setCurrentSessionId] = useState<string>(Date.now().toString());
+    const matchingSession = sessionsList.find(s => s.topicTitle === currentTopicTitle);
+    if (matchingSession) {
+      const revivedMessages = matchingSession.messages.map(m => ({
+        ...m,
+        timestamp: new Date(m.timestamp)
+      }));
+      setMessages(revivedMessages);
+      setCurrentSessionId(matchingSession.id);
+    } else {
+      setMessages([
+        {
+          id: "welcome",
+          role: "model",
+          content: `ជំរាបសួរ! ខ្ញុំជាគ្រូជំនួយការគណិតវិទ្យា AI របស់អ្នក។ ខ្ញុំអាចជួយពន្យល់ពីរូបមន្ត ដំណោះស្រាយលំហាត់ និងទ្រឹស្តីបទផ្សេងៗអំពី **${currentTopicTitle}** ថ្នាក់ទី១២ តាមសៀវភៅក្រសួង។ តើអ្នកមានចម្ងល់ត្រង់ណាដែរ?`,
+          timestamp: new Date()
+        }
+      ]);
+      setCurrentSessionId(Date.now().toString());
+    }
+  }, [currentTopicId, currentTopicTitle]);
 
   // Autosave current session
   useEffect(() => {
@@ -106,6 +177,19 @@ export default function AITutor({ currentTopicTitle, currentTopicId }: AITutorPr
     const updated = chatSessions.filter(s => s.id !== id);
     setChatSessions(updated);
     localStorage.setItem("ai_tutor_history", JSON.stringify(updated));
+
+    // If the active session is deleted, start fresh
+    if (currentSessionId === id) {
+      setMessages([
+        {
+          id: "welcome",
+          role: "model",
+          content: `ជំរាបសួរ! ខ្ញុំជាគ្រូជំនួយការគណិតវិទ្យា AI របស់អ្នក។ ខ្ញុំអាចជួយពន្យល់ពីរូបមន្ត ដំណោះស្រាយលំហាត់ និងទ្រឹស្តីបទផ្សេងៗអំពី **${currentTopicTitle}** ថ្នាក់ទី១២ តាមសៀវភៅក្រសួង។ តើអ្នកមានចម្ងល់ត្រង់ណាដែរ?`,
+          timestamp: new Date()
+        }
+      ]);
+      setCurrentSessionId(Date.now().toString());
+    }
   };
 
   // Auto scroll to bottom of chat

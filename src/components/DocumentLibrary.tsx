@@ -162,9 +162,9 @@ export default function DocumentLibrary() {
   const handleFileUpload = async (file: File) => {
     if (!user) return;
 
-    // 10MB limit
-    if (file.size > 10 * 1024 * 1024) {
-      setErrorMsg("ឯកសារធំពេកហើយ! ទំហំអតិបរមាគឺ 10MB (File is too large! Maximum limit is 10MB)");
+    // Firestore 1MB limit check to prevent database write errors
+    if (file.size > 1 * 1024 * 1024) {
+      setErrorMsg("ឯកសារធំពេកហើយ! ដោយសារតែការកំណត់របស់ Database ទំហំអតិបរមាគឺ 1MB (File is too large! Due to Database limits, maximum limit is 1MB)");
       return;
     }
 
@@ -243,6 +243,11 @@ export default function DocumentLibrary() {
 
     try {
       const contentSize = new Blob([noteContent]).size;
+      if (contentSize > 1 * 1024 * 1024) {
+        setErrorMsg("កំណត់ត្រាធំពេកហើយ! ដោយសារតែការកំណត់របស់ Database ទំហំអតិបរមាគឺ 1MB (Note is too large! Due to Database limits, maximum limit is 1MB)");
+        setIsSaving(false);
+        return;
+      }
 
       const docRef = doc(collection(db, "documents"));
       const newDocPayload = {

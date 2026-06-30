@@ -1378,19 +1378,54 @@ export function ProbabilityExplorer() {
   );
 }
 
-// ==========================================
-// 8. CURVE SKETCHING EXPLORER (Chapter 10)
-// ==========================================
 export function CurveSketchingExplorer() {
   const [funcType, setFuncType] = useState<string>("quadratic");
   const [a, setA] = useState<number>(1);
   const [b, setB] = useState<number>(-2);
+  const [c, setC] = useState<number>(1);
 
-  // Quadratic f(x) = ax^2 + bx + 1
-  // Derivative f'(x) = 2ax + b
-  // Critical point where f'(x) = 0 => x = -b / (2a)
-  const x_crit = -b / (2 * a);
-  const y_crit = a * x_crit * x_crit + b * x_crit + 1;
+  // Reset defaults on type change to keep graphs highly legible and well-bounded
+  const handleTypeChange = (type: string) => {
+    setFuncType(type);
+    if (type === "quadratic") {
+      setA(1);
+      setB(-2);
+      setC(1);
+    } else if (type === "rational") {
+      setA(1);
+      setB(-2);
+      setC(2);
+    } else if (type === "exponential") {
+      setA(1);
+      setB(-1);
+      setC(1);
+    } else if (type === "logarithmic") {
+      setA(1);
+      setB(1);
+      setC(-1);
+    }
+  };
+
+  // Quadratic calculations
+  const x_crit = funcType === "quadratic" ? (a === 0 ? 0 : -b / (2 * a)) : 0;
+  const y_crit = funcType === "quadratic" ? (a * x_crit * x_crit + b * x_crit + c) : 0;
+
+  // Rational calculations: y = (ax^2 + bx + c) / (x - 1)
+  const rat_D = a * (a + b + c);
+  const rat_hasExtrema = rat_D > 0 && a !== 0;
+  const rat_x1 = rat_hasExtrema ? 1 - Math.sqrt(rat_D) / Math.abs(a) : 0;
+  const rat_x2 = rat_hasExtrema ? 1 + Math.sqrt(rat_D) / Math.abs(a) : 0;
+  const rat_y1 = rat_hasExtrema ? (a * rat_x1 * rat_x1 + b * rat_x1 + c) / (rat_x1 - 1) : 0;
+  const rat_y2 = rat_hasExtrema ? (a * rat_x2 * rat_x2 + b * rat_x2 + c) / (rat_x2 - 1) : 0;
+
+  // Exponential calculations: y = (ax + b) * e^x + c
+  const exp_x = a !== 0 ? -1 - b / a : 0;
+  const exp_y = a !== 0 ? (a * exp_x + b) * Math.exp(exp_x) + c : 0;
+
+  // Logarithmic calculations: y = ax + b + c * ln(x)
+  const log_hasExtrema = a !== 0 && (-c / a) > 0;
+  const log_x = log_hasExtrema ? -c / a : 0;
+  const log_y = log_hasExtrema ? a * log_x + b + c * Math.log(log_x) : 0;
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-md shadow-xl" id="curve-sketching-explorer">
@@ -1400,71 +1435,300 @@ export function CurveSketchingExplorer() {
         </span>
         <h4 className="font-sans font-bold text-white text-base mt-2">ឧបករណ៍វិភាគខ្សែគោល និងតារាងអថេរភាព (Curve Variation Analyzer)</h4>
         <p className="font-sans text-xs text-slate-400 mt-1">
-          កែសម្រួលមេគុណនៃអនុគមន៍ដឺក្រេទី២ <span className="text-orange-400 font-bold">$f(x) = ax^2 + bx + 1$</span> ដើម្បីវិភាគតារាងអថេរភាព និងទិសដៅ៖
+          ជ្រើសរើសប្រភេទអនុគមន៍ រួចកែសម្រួលមេគុណដើម្បីវិភាគក្រាប អាស៉ីមតូត និងសង់តារាងអថេរភាពដោយស្វ័យប្រវត្ត៖
         </p>
       </div>
 
+      {/* Function Type Selector Tabbed Header */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+        {[
+          { id: "quadratic", label: "ដឺក្រេទី ២ (Quadratic)", desc: "y = ax² + bx + c" },
+          { id: "rational", label: "សនិទានដឺក្រេទី២លើទី១", desc: "y = (ax² + bx + c) / (x - 1)" },
+          { id: "exponential", label: "អិចស្ប៉ូណង់ស្យែលលាយពហុធា", desc: "y = (ax + b)e^x + c" },
+          { id: "logarithmic", label: "លោការីតនេពែលាយពហុធា", desc: "y = ax + b + c·ln(x)" }
+        ].map((type) => (
+          <button
+            key={type.id}
+            onClick={() => handleTypeChange(type.id)}
+            className={`px-2.5 py-2 rounded-xl border text-[11px] font-semibold font-sans transition-all text-center flex flex-col items-center justify-center gap-0.5 ${
+              funcType === type.id
+                ? "bg-[#ff4e00] text-white border-[#ff4e00] shadow-lg shadow-[#ff4e00]/20"
+                : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20"
+            }`}
+          >
+            <span className="truncate w-full">{type.label}</span>
+            <span className="text-[9px] opacity-75 font-mono truncate w-full">{type.desc}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Interactive Graph Section */}
-      <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-5 flex flex-col items-center justify-center relative min-h-[220px]" id="curve-sketching-graph">
-        <span className="absolute top-2 left-2 text-[10px] text-slate-500 font-mono flex items-center gap-1">
-          <Eye className="w-3 h-3 text-[#ff4e00]" />
-          <span>គំនូរក្រាហ្វិកខ្សែគោលដឺក្រេទី ២ (Quadratic Curve & Critical Vertex)</span>
+      <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-5 flex flex-col items-center justify-center relative min-h-[240px]" id="curve-sketching-graph">
+        <span className="absolute top-2 left-2 text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
+          <Eye className="w-3.5 h-3.5 text-[#ff4e00]" />
+          <span>
+            {funcType === "quadratic" && `គំនូរខ្សែគោលប៉ារ៉ាបូល (Quadratic Parabola)`}
+            {funcType === "rational" && `គំនូរខ្សែគោលសនិទានដឺក្រេទី២លើទី១ (Rational Degree 2/1)`}
+            {funcType === "exponential" && `គំនូរខ្សែគោលអិចស្ប៉ូណង់ស្យែលលាយពហុធា (Mixed Exponential Curve)`}
+            {funcType === "logarithmic" && `គំនូរខ្សែគោលលោការីតនេពែលាយពហុធា (Mixed Natural Logarithm Curve)`}
+          </span>
         </span>
-        <svg viewBox="0 0 400 200" className="w-full max-w-[480px] h-auto overflow-visible">
-          {/* Coordinate grid lines */}
-          <line x1="20" y1="120" x2="380" y2="120" stroke="#334155" strokeWidth="1" />
-          <line x1="200" y1="10" x2="200" y2="190" stroke="#334155" strokeWidth="1" />
+        
+        <svg viewBox="0 0 400 200" className="w-full max-w-[480px] h-auto overflow-visible mt-4">
+          {/* Subtle grid lines for a premium graphing feel */}
+          {[-4, -3, -2, -1, 1, 2, 3, 4].map((gridX) => (
+            <line
+              key={`gridX-${gridX}`}
+              x1={200 + gridX * 32}
+              y1="10"
+              x2={200 + gridX * 32}
+              y2="190"
+              stroke="rgba(255, 255, 255, 0.04)"
+              strokeWidth="1"
+              strokeDasharray="2 2"
+            />
+          ))}
+          {[-8, -6, -4, -2, 2, 4, 6, 8].map((gridY) => (
+            <line
+              key={`gridY-${gridY}`}
+              x1="20"
+              y1={120 - gridY * 8}
+              x2="380"
+              y2={120 - gridY * 8}
+              stroke="rgba(255, 255, 255, 0.04)"
+              strokeWidth="1"
+              strokeDasharray="2 2"
+            />
+          ))}
+
+          {/* Coordinate axes */}
+          <line x1="20" y1="120" x2="380" y2="120" stroke="#475569" strokeWidth="1.25" />
+          <line x1="200" y1="10" x2="200" y2="190" stroke="#475569" strokeWidth="1.25" />
           
-          {/* Labels for axes */}
-          <text x="375" y="135" fill="#64748b" className="text-[10px] font-mono">x</text>
-          <text x="210" y="20" fill="#64748b" className="text-[10px] font-mono font-bold">y</text>
+          {/* Axis Labels */}
+          <text x="375" y="135" fill="#94a3b8" className="text-[10px] font-mono">x</text>
+          <text x="212" y="18" fill="#94a3b8" className="text-[10px] font-mono font-bold">y</text>
 
           {(() => {
             const mapX = (xVal: number) => 200 + xVal * 32;
-            const mapY = (yVal: number) => 120 - yVal * 7.5;
+            const mapY = (yVal: number) => 120 - yVal * 8;
 
-            // Plot curve: y = ax^2 + bx + 1
-            const points: string[] = [];
-            for (let sx = -4.5; sx <= 4.5; sx += 0.1) {
-              const sy = a * sx * sx + b * sx + 1;
-              const px = mapX(sx);
-              const py = mapY(sy);
-              if (py < 10 || py > 190) continue;
-              if (points.length === 0) {
-                points.push(`M ${px} ${py}`);
-              } else {
-                points.push(`L ${px} ${py}`);
+            if (funcType === "quadratic") {
+              const points: string[] = [];
+              for (let sx = -4.8; sx <= 4.8; sx += 0.1) {
+                const sy = a * sx * sx + b * sx + c;
+                const px = mapX(sx);
+                const py = mapY(sy);
+                if (py < 10 || py > 190) continue;
+                if (points.length === 0) points.push(`M ${px} ${py}`);
+                else points.push(`L ${px} ${py}`);
               }
+              const pathStr = points.join(" ");
+              const critX = mapX(x_crit);
+              const critY = mapY(y_crit);
+
+              return (
+                <>
+                  {/* Vertex Horizontal Tangent */}
+                  {critY >= 10 && critY <= 190 && (
+                    <line x1="30" y1={critY} x2="370" y2={critY} stroke="#f97316" strokeWidth="1" strokeDasharray="3 3" opacity="0.7" />
+                  )}
+                  {/* Function Curve */}
+                  {pathStr && <path d={pathStr} fill="none" stroke="#ff4e00" strokeWidth="2.5" strokeLinecap="round" />}
+                  {/* Critical Vertex dot */}
+                  {critY >= 10 && critY <= 190 && (
+                    <>
+                      <circle cx={critX} cy={critY} r="5" fill="#e11d48" stroke="#ffffff" strokeWidth="1.5" className="animate-pulse" />
+                      <text x={critX + 8} y={critY - 5} fill="#f43f5e" className="text-[9px] font-mono font-bold">V({x_crit.toFixed(1)}, {y_crit.toFixed(1)})</text>
+                    </>
+                  )}
+                </>
+              );
+            } else if (funcType === "rational") {
+              // y = (ax^2 + bx + c) / (x - 1)
+              // asymptote at x = 1
+              const leftPoints: string[] = [];
+              const rightPoints: string[] = [];
+
+              for (let sx = -4.8; sx <= 4.8; sx += 0.05) {
+                if (Math.abs(sx - 1) < 0.15) continue; // safety gap around vertical asymptote
+                const sy = (a * sx * sx + b * sx + c) / (sx - 1);
+                const px = mapX(sx);
+                const py = mapY(sy);
+                if (py < 10 || py > 190) continue;
+
+                if (sx < 1) {
+                  if (leftPoints.length === 0) leftPoints.push(`M ${px} ${py}`);
+                  else leftPoints.push(`L ${px} ${py}`);
+                } else {
+                  if (rightPoints.length === 0) rightPoints.push(`M ${px} ${py}`);
+                  else rightPoints.push(`L ${px} ${py}`);
+                }
+              }
+
+              const leftPath = leftPoints.join(" ");
+              const rightPath = rightPoints.join(" ");
+              const asympX = mapX(1);
+
+              // Oblique asymptote line: y = ax + (a + b)
+              const x1_o = -4.8;
+              const y1_o = a * x1_o + a + b;
+              const x2_o = 4.8;
+              const y2_o = a * x2_o + a + b;
+              const asymp_x1 = mapX(x1_o);
+              const asymp_y1 = mapY(y1_o);
+              const asymp_x2 = mapX(x2_o);
+              const asymp_y2 = mapY(y2_o);
+
+              return (
+                <>
+                  {/* Vertical Asymptote x = 1 */}
+                  {asympX >= 30 && asympX <= 370 && (
+                    <>
+                      <line x1={asympX} y1="10" x2={asympX} y2="190" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="4 4" />
+                      <text x={asympX + 6} y="22" fill="#06b6d4" className="text-[8px] font-mono font-bold">x = 1 (ឈរ)</text>
+                    </>
+                  )}
+                  {/* Oblique Asymptote y = ax + (a+b) */}
+                  {asymp_y1 >= 10 && asymp_y1 <= 190 && asymp_y2 >= 10 && asymp_y2 <= 190 && (
+                    <>
+                      <line x1={asymp_x1} y1={asymp_y1} x2={asymp_x2} y2={asymp_y2} stroke="#10b981" strokeWidth="1.5" strokeDasharray="4 4" />
+                      <text x="25" y={asymp_y1 - 5} fill="#10b981" className="text-[8px] font-mono font-bold">y = {a === 1 ? "" : a === -1 ? "-" : a}x {a+b >= 0 ? "+" : "-"} {Math.abs(a+b)} (ទ្រត)</text>
+                    </>
+                  )}
+                  {/* Local Extrema Dots if any */}
+                  {rat_hasExtrema && (
+                    <>
+                      {mapY(rat_y1) >= 10 && mapY(rat_y1) <= 190 && (
+                        <>
+                          <circle cx={mapX(rat_x1)} cy={mapY(rat_y1)} r="4" fill="#e11d48" stroke="#ffffff" strokeWidth="1" />
+                          <text x={mapX(rat_x1) + 6} y={mapY(rat_y1) - 4} fill="#f43f5e" className="text-[8px] font-mono font-bold">E1({rat_x1.toFixed(1)}, {rat_y1.toFixed(1)})</text>
+                        </>
+                      )}
+                      {mapY(rat_y2) >= 10 && mapY(rat_y2) <= 190 && (
+                        <>
+                          <circle cx={mapX(rat_x2)} cy={mapY(rat_y2)} r="4" fill="#e11d48" stroke="#ffffff" strokeWidth="1" />
+                          <text x={mapX(rat_x2) + 6} y={mapY(rat_y2) - 4} fill="#f43f5e" className="text-[8px] font-mono font-bold">E2({rat_x2.toFixed(1)}, {rat_y2.toFixed(1)})</text>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {/* Two hyperbola branches */}
+                  {leftPath && <path d={leftPath} fill="none" stroke="#ff4e00" strokeWidth="2.5" strokeLinecap="round" />}
+                  {rightPath && <path d={rightPath} fill="none" stroke="#ff4e00" strokeWidth="2.5" strokeLinecap="round" />}
+                </>
+              );
+            } else if (funcType === "exponential") {
+              // y = (ax + b) * e^x + c
+              const points: string[] = [];
+              for (let sx = -4.8; sx <= 4.8; sx += 0.05) {
+                const sy = (a * sx + b) * Math.exp(sx) + c;
+                const px = mapX(sx);
+                const py = mapY(sy);
+                if (py < 10 || py > 190) continue;
+                if (points.length === 0) points.push(`M ${px} ${py}`);
+                else points.push(`L ${px} ${py}`);
+              }
+              const pathStr = points.join(" ");
+              const asympY = mapY(c);
+
+              return (
+                <>
+                  {/* Horizontal Asymptote y = c (as x -> -infinity) */}
+                  {asympY >= 10 && asympY <= 190 && (
+                    <>
+                      <line x1="20" y1={asympY} x2="380" y2={asympY} stroke="#10b981" strokeWidth="1.5" strokeDasharray="4 4" />
+                      <text x="25" y={asympY - 5} fill="#10b981" className="text-[8px] font-mono font-bold">y = {c} (ដេក, x → -∞)</text>
+                    </>
+                  )}
+                  {/* Extrema Dot */}
+                  {a !== 0 && mapY(exp_y) >= 10 && mapY(exp_y) <= 190 && (
+                    <>
+                      <circle cx={mapX(exp_x)} cy={mapY(exp_y)} r="4" fill="#e11d48" stroke="#ffffff" strokeWidth="1" />
+                      <text x={mapX(exp_x) + 6} y={mapY(exp_y) - 4} fill="#f43f5e" className="text-[8px] font-mono font-bold">E({exp_x.toFixed(1)}, {exp_y.toFixed(1)})</text>
+                    </>
+                  )}
+                  {/* Function Curve */}
+                  {pathStr && <path d={pathStr} fill="none" stroke="#ff4e00" strokeWidth="2.5" strokeLinecap="round" />}
+                </>
+              );
+            } else if (funcType === "logarithmic") {
+              // y = ax + b + c * ln(x), domain x > 0
+              const points: string[] = [];
+              for (let sx = 0.05; sx <= 4.8; sx += 0.05) {
+                const sy = a * sx + b + c * Math.log(sx);
+                const px = mapX(sx);
+                const py = mapY(sy);
+                if (py < 10 || py > 190) continue;
+                if (points.length === 0) points.push(`M ${px} ${py}`);
+                else points.push(`L ${px} ${py}`);
+              }
+              const pathStr = points.join(" ");
+              const asympX = mapX(0);
+
+              return (
+                <>
+                  {/* Vertical Asymptote x = 0 */}
+                  {asympX >= 30 && asympX <= 370 && (
+                    <>
+                      <line x1={asympX} y1="10" x2={asympX} y2="190" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="4 4" />
+                      <text x={asympX + 6} y="22" fill="#06b6d4" className="text-[8px] font-mono font-bold">x = 0 (ឈរ)</text>
+                    </>
+                  )}
+                  {/* Shaded undefined area on the left of x = 0 */}
+                  {asympX > 30 && (
+                    <rect x="20" y="10" width={asympX - 20} height="180" fill="rgba(239, 68, 68, 0.05)" />
+                  )}
+                  {/* Extrema Dot */}
+                  {log_hasExtrema && mapY(log_y) >= 10 && mapY(log_y) <= 190 && (
+                    <>
+                      <circle cx={mapX(log_x)} cy={mapY(log_y)} r="4" fill="#e11d48" stroke="#ffffff" strokeWidth="1" />
+                      <text x={mapX(log_x) + 6} y={mapY(log_y) - 4} fill="#f43f5e" className="text-[8px] font-mono font-bold">E({log_x.toFixed(1)}, {log_y.toFixed(1)})</text>
+                    </>
+                  )}
+                  {/* Function Curve */}
+                  {pathStr && <path d={pathStr} fill="none" stroke="#ff4e00" strokeWidth="2.5" strokeLinecap="round" />}
+                </>
+              );
             }
-            const pathStr = points.join(" ");
-
-            const critX = mapX(x_crit);
-            const critY = mapY(y_crit);
-
-            return (
-              <>
-                {/* Horizontal Tangent line at vertex */}
-                {critY >= 10 && critY <= 190 && (
-                  <line x1="40" y1={critY} x2="360" y2={critY} stroke="#ff8c00" strokeWidth="1.25" strokeDasharray="4 4" opacity="0.8" />
-                )}
-
-                {/* Function Curve */}
-                <path d={pathStr} fill="none" stroke="#ff4e00" strokeWidth="2.5" />
-
-                {/* Critical Vertex dot */}
-                {critY >= 10 && critY <= 190 && (
-                  <>
-                    <circle cx={critX} cy={critY} r="5.5" fill="#e11d48" stroke="#ffffff" strokeWidth="1.5" className="animate-pulse" />
-                    <text x={critX + 8} y={critY - 6} fill="#e11d48" className="text-[9px] font-mono font-bold">កំពូល V({x_crit.toFixed(1)}, {y_crit.toFixed(1)})</text>
-                  </>
-                )}
-              </>
-            );
+            return null;
           })()}
         </svg>
-        <div className="text-[10px] text-slate-500 font-sans mt-2 text-center flex items-center justify-center gap-3">
-          <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-[#ff4e00] inline-block" /> ខ្សែគោល y = {a}x² {b >= 0 ? "+" : ""} {b}x + 1</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 border-t border-dashed border-[#ff8c00] inline-block" /> បន្ទាត់ប៉ះត្រង់កំពូល y = {y_crit.toFixed(2)}</span>
+
+        <div className="text-[10px] text-slate-400 font-sans mt-3 text-center flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-0.5 bg-[#ff4e00] inline-block rounded" />
+            <span>
+              {funcType === "quadratic" && `ខ្សែគោល y = ${a}x² ${b >= 0 ? "+" : ""} ${b}x ${c >= 0 ? "+" : ""} ${c}`}
+              {funcType === "rational" && `ខ្សែគោល y = (${a}x² ${b >= 0 ? "+" : ""} ${b}x ${c >= 0 ? "+" : ""} ${c}) / (x - 1)`}
+              {funcType === "exponential" && `ខ្សែគោល y = (${a}x ${b >= 0 ? "+" : ""} ${b})·e^x ${c >= 0 ? "+" : ""} ${c}`}
+              {funcType === "logarithmic" && `ខ្សែគោល y = ${a}x ${b >= 0 ? "+" : ""} ${b} ${c >= 0 ? "+" : ""} ${c}·ln(x)`}
+            </span>
+          </span>
+          {funcType === "quadratic" && (
+            <span className="flex items-center gap-1.5 text-orange-400">
+              <span className="w-2.5 h-0.5 border-t border-dashed border-[#f97316] inline-block" />
+              <span>បន្ទាត់ប៉ះត្រង់កំពូល y = {y_crit.toFixed(2)}</span>
+            </span>
+          )}
+          {funcType === "rational" && (
+            <span className="flex items-center gap-1.5 text-emerald-400">
+              <span className="w-2.5 h-0.5 border-t border-dashed border-[#10b981] inline-block" />
+              <span>អាស៉ីមតូតទ្រត y = {a === 1 ? "" : a === -1 ? "-" : a}x {a+b >= 0 ? "+" : "-"} {Math.abs(a+b)}</span>
+            </span>
+          )}
+          {(funcType === "rational" || funcType === "logarithmic") && (
+            <span className="flex items-center gap-1.5 text-cyan-400">
+              <span className="w-2.5 h-0.5 border-t border-dashed border-[#06b6d4] inline-block" />
+              <span>អាស៉ីមតូតឈរ</span>
+            </span>
+          )}
+          {funcType === "exponential" && (
+            <span className="flex items-center gap-1.5 text-emerald-400">
+              <span className="w-2.5 h-0.5 border-t border-dashed border-[#10b981] inline-block" />
+              <span>អាស៉ីមតូតដេក y = {c}</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -1477,7 +1741,12 @@ export function CurveSketchingExplorer() {
 
           <div>
             <div className="flex justify-between text-[11px] font-sans text-slate-300 mb-1">
-              <span>មេគុណ a (ដឺក្រេទី ២)</span>
+              <span>
+                {funcType === "quadratic" && "មេគុណ a (ដឺក្រេទី ២)"}
+                {funcType === "rational" && "មេគុណ a (ដឺក្រេទី ២ នៃភាគយក)"}
+                {funcType === "exponential" && "មេគុណ a (មេគុណ x នៃពហុធា)"}
+                {funcType === "logarithmic" && "មេគុណ a (មេគុណ x នៃពហុធា)"}
+              </span>
               <span className="font-mono text-orange-400 font-bold">{a}</span>
             </div>
             <input
@@ -1488,7 +1757,7 @@ export function CurveSketchingExplorer() {
               value={a}
               onChange={(e) => {
                 const val = Number(e.target.value);
-                setA(val === 0 ? 1 : val); // avoid a = 0 for quadratic
+                setA(val === 0 ? 1 : val);
               }}
               className="w-full h-1 bg-white/10 accent-[#ff4e00] cursor-pointer"
             />
@@ -1496,15 +1765,81 @@ export function CurveSketchingExplorer() {
 
           <div>
             <div className="flex justify-between text-[11px] font-sans text-slate-300 mb-1">
-              <span>មេគុណ b (ដឺក្រេទី ១)</span>
+              <span>
+                {funcType === "quadratic" && "មេគុណ b (ដឺក្រេទី ១)"}
+                {funcType === "rational" && "មេគុណ b (ដឺក្រេទី ១ នៃភាគយក)"}
+                {funcType === "exponential" && "មេគុណ b (តួសេរីនៃពហុធា)"}
+                {funcType === "logarithmic" && "មេគុណ b (តួសេរីពហុធា)"}
+              </span>
               <span className="font-mono text-orange-400 font-bold">{b}</span>
             </div>
-            <input type="range" min="-6" max="6" step="1" value={b} onChange={(e) => setB(Number(e.target.value))} className="w-full h-1 bg-white/10 accent-[#ff4e00] cursor-pointer" />
+            <input
+              type="range"
+              min={funcType === "quadratic" ? "-6" : "-4"}
+              max={funcType === "quadratic" ? "6" : "4"}
+              step="1"
+              value={b}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setB(val);
+              }}
+              className="w-full h-1 bg-white/10 accent-[#ff4e00] cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[11px] font-sans text-slate-300 mb-1">
+              <span>
+                {funcType === "quadratic" && "មេគុណ c (តួសេរី)"}
+                {funcType === "rational" && "មេគុណ c (តួសេរីនៃភាគយក)"}
+                {funcType === "exponential" && "មេគុណ c (តួសេរីអាស៉ីមតូតដេក)"}
+                {funcType === "logarithmic" && "មេគុណ c (មេគុណនៃ ln(x))"}
+              </span>
+              <span className="font-mono text-orange-400 font-bold">{c}</span>
+            </div>
+            <input
+              type="range"
+              min="-4"
+              max="4"
+              step="1"
+              value={c}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (funcType === "logarithmic" && val === 0) {
+                  setC(-1);
+                } else {
+                  setC(val);
+                }
+              }}
+              className="w-full h-1 bg-white/10 accent-[#ff4e00] cursor-pointer"
+            />
           </div>
 
           <div className="bg-black/30 p-3 rounded-lg border border-white/5 space-y-1 text-xs font-mono">
-            <div>អនុគមន៍៖ <span className="text-white">f(x) = {a}x² {b >= 0 ? "+" : ""} {b}x + 1</span></div>
-            <div>ដេរីវេ៖ <span className="text-[#ff8c00]">f'(x) = {2 * a}x {b >= 0 ? "+" : ""} {b}</span></div>
+            {funcType === "quadratic" && (
+              <>
+                <div>អនុគមន៍៖ <span className="text-white">f(x) = {a === 1 ? "" : a === -1 ? "-" : a}x² {b >= 0 ? "+" : ""} {b}x {c >= 0 ? "+" : ""} {c}</span></div>
+                <div>ដេរីវេ៖ <span className="text-[#ff8c00]">f'(x) = {2 * a}x {b >= 0 ? "+" : ""} {b}</span></div>
+              </>
+            )}
+            {funcType === "rational" && (
+              <>
+                <div>អនុគមន៍៖ <span className="text-white">f(x) = ({a === 1 ? "" : a === -1 ? "-" : a}x² {b >= 0 ? "+" : ""} {b}x {c >= 0 ? "+" : ""} {c}) / (x - 1)</span></div>
+                <div>ដេរីវេ៖ <span className="text-[#ff8c00]">f'(x) = ({a === 1 ? "" : a === -1 ? "-" : a}x² - {2 * a}x {b+c >= 0 ? "-" : "+"} {Math.abs(b+c)}) / (x - 1)²</span></div>
+              </>
+            )}
+            {funcType === "exponential" && (
+              <>
+                <div>អនុគមន៍៖ <span className="text-white">f(x) = ({a === 1 ? "" : a === -1 ? "-" : a}x {b >= 0 ? "+" : ""} {b}) · e^x {c >= 0 ? "+" : ""} {c}</span></div>
+                <div>ដេរីវេ៖ <span className="text-[#ff8c00]">f'(x) = ({a === 1 ? "" : a === -1 ? "-" : a}x {a+b >= 0 ? "+" : ""} {a+b}) · e^x</span></div>
+              </>
+            )}
+            {funcType === "logarithmic" && (
+              <>
+                <div>អនុគមន៍៖ <span className="text-white">f(x) = {a === 1 ? "" : a === -1 ? "-" : a}x {b >= 0 ? "+" : ""} {b} {c >= 0 ? "+" : ""} {c} · ln(x)</span></div>
+                <div>ដេរីវេ៖ <span className="text-[#ff8c00]">f'(x) = ({a === 1 ? "" : a === -1 ? "-" : a}x {c >= 0 ? "+" : ""} {c}) / x</span></div>
+              </>
+            )}
           </div>
         </div>
 
@@ -1515,37 +1850,238 @@ export function CurveSketchingExplorer() {
             <span>តារាងអថេរភាព (Table of Variations)</span>
           </h5>
 
-          <div className="border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
-            {/* Header x */}
-            <div className="grid grid-cols-4 bg-black/40 text-slate-400 font-bold py-1.5 px-2 border-b border-white/10">
-              <span>x</span>
-              <span>-∞</span>
-              <span className="text-[#ff4e00] font-bold text-center">{x_crit.toFixed(2)}</span>
-              <span className="text-right">+∞</span>
-            </div>
+          {funcType === "quadratic" && (
+            <div className="border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
+              {/* Header x */}
+              <div className="grid grid-cols-4 bg-black/40 text-slate-400 font-bold py-1.5 px-2 border-b border-white/10">
+                <span>x</span>
+                <span>-∞</span>
+                <span className="text-[#ff4e00] font-bold text-center">{x_crit.toFixed(2)}</span>
+                <span className="text-right">+∞</span>
+              </div>
 
-            {/* Row f'(x) */}
-            <div className="grid grid-cols-4 py-1.5 px-2 border-b border-white/10 items-center">
-              <span className="text-slate-400 font-bold">f'(x)</span>
-              <span>{a > 0 ? "-" : "+"}</span>
-              <span className="text-center font-bold text-white">0</span>
-              <span className="text-right">{a > 0 ? "+" : "-"}</span>
-            </div>
+              {/* Row f'(x) */}
+              <div className="grid grid-cols-4 py-1.5 px-2 border-b border-white/10 items-center">
+                <span className="text-slate-400 font-bold">f'(x)</span>
+                <span>{a > 0 ? "-" : "+"}</span>
+                <span className="text-center font-bold text-white">0</span>
+                <span className="text-right">{a > 0 ? "+" : "-"}</span>
+              </div>
 
-            {/* Row f(x) with arrows */}
-            <div className="grid grid-cols-4 py-3 px-2 items-center bg-white/5 h-16">
-              <span className="text-slate-400 font-bold">f(x)</span>
-              <span className="self-start">{a > 0 ? "+∞" : "-∞"}</span>
-              <span className="text-center font-bold text-white self-center">
-                <div className="text-[10px] text-orange-400">{a > 0 ? "អប្បបរមា" : "អតិបរមា"}</div>
-                {y_crit.toFixed(2)}
-              </span>
-              <span className="text-right self-end">{a > 0 ? "+∞" : "-∞"}</span>
+              {/* Row f(x) with arrows */}
+              <div className="grid grid-cols-4 py-3 px-2 items-center bg-white/5 h-16">
+                <span className="text-slate-400 font-bold">f(x)</span>
+                <span className="self-start">{a > 0 ? "+∞" : "-∞"}</span>
+                <span className="text-center font-bold text-white self-center">
+                  <div className="text-[10px] text-orange-400 font-sans">{a > 0 ? "អប្បបរមា" : "អតិបរមា"}</div>
+                  {y_crit.toFixed(2)}
+                </span>
+                <span className="text-right self-end">{a > 0 ? "+∞" : "-∞"}</span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {funcType === "rational" && (() => {
+            const D_val = a * (a + b + c);
+            const hasExtr = D_val > 0 && a !== 0;
+            const x1_val = hasExtr ? 1 - Math.sqrt(D_val) / Math.abs(a) : 0;
+            const x2_val = hasExtr ? 1 + Math.sqrt(D_val) / Math.abs(a) : 0;
+            const y1_val = hasExtr ? (a * x1_val * x1_val + b * x1_val + c) / (x1_val - 1) : 0;
+            const y2_val = hasExtr ? (a * x2_val * x2_val + b * x2_val + c) / (x2_val - 1) : 0;
+
+            const signL = a > 0 ? "+" : "-";
+            const signR = a > 0 ? "+" : "-";
+
+            return (
+              <div className="border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
+                {/* Header x */}
+                <div className="grid grid-cols-6 bg-black/40 text-slate-400 font-bold py-1.5 px-2 border-b border-white/10 text-center">
+                  <span className="text-left font-sans">x</span>
+                  <span>-∞</span>
+                  <span>{hasExtr ? x1_val.toFixed(1) : ""}</span>
+                  <span className="text-cyan-400 font-bold">1</span>
+                  <span>{hasExtr ? x2_val.toFixed(1) : ""}</span>
+                  <span className="text-right">+∞</span>
+                </div>
+
+                {/* Row f'(x) */}
+                <div className="grid grid-cols-6 py-1.5 px-2 border-b border-white/10 items-center text-center">
+                  <span className="text-left text-slate-400 font-bold font-sans">f'(x)</span>
+                  <span>{hasExtr ? signL : (a > 0 ? "+" : "-")}</span>
+                  <span>{hasExtr ? "0" : ""}</span>
+                  <span className="text-cyan-400 font-bold border-x border-dashed border-cyan-500/50 h-4 flex items-center justify-center">||</span>
+                  <span>{hasExtr ? "0" : ""}</span>
+                  <span className="text-right">{hasExtr ? signR : (a > 0 ? "+" : "-")}</span>
+                </div>
+
+                {/* Row f(x) */}
+                <div className="grid grid-cols-6 py-3 px-2 items-center bg-white/5 h-16 text-center">
+                  <span className="text-left text-slate-400 font-bold font-sans">f(x)</span>
+                  <span className={a > 0 ? "self-end" : "self-start"}>
+                    {a > 0 ? "-∞" : "+∞"}
+                  </span>
+                  
+                  {hasExtr ? (
+                    <span className={a > 0 ? "self-start text-orange-400" : "self-end text-orange-400"}>
+                      <div className="text-[8px] font-sans opacity-70">{a > 0 ? "អតិបរមា" : "អប្បបរមា"}</div>
+                      {y1_val.toFixed(1)}
+                    </span>
+                  ) : <span></span>}
+
+                  <span className="text-cyan-400 font-bold border-x border-dashed border-cyan-500/50 h-12 flex flex-col justify-between text-[10px]">
+                    <span>{hasExtr ? (a > 0 ? "-∞" : "+∞") : (a > 0 ? "+∞" : "-∞")}</span>
+                    <span>||</span>
+                    <span>{hasExtr ? (a > 0 ? "+∞" : "-∞") : (a > 0 ? "-∞" : "+∞")}</span>
+                  </span>
+
+                  {hasExtr ? (
+                    <span className={a > 0 ? "self-end text-orange-400" : "self-start text-orange-400"}>
+                      <div className="text-[8px] font-sans opacity-70">{a > 0 ? "អប្បបរមា" : "អតិបរមា"}</div>
+                      {y2_val.toFixed(1)}
+                    </span>
+                  ) : <span></span>}
+
+                  <span className={a > 0 ? "self-start text-right" : "self-end text-right"}>
+                    {a > 0 ? "+∞" : "-∞"}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {funcType === "exponential" && (() => {
+            const exp_x_val = a !== 0 ? -1 - b / a : 0;
+            const exp_y_val = a !== 0 ? (a * exp_x_val + b) * Math.exp(exp_x_val) + c : 0;
+
+            return (
+              <div className="border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
+                {/* Header x */}
+                <div className="grid grid-cols-4 bg-black/40 text-slate-400 font-bold py-1.5 px-2 border-b border-white/10 text-center">
+                  <span className="text-left font-sans">x</span>
+                  <span>-∞</span>
+                  <span className="text-orange-400">{a !== 0 ? exp_x_val.toFixed(1) : ""}</span>
+                  <span className="text-right">+∞</span>
+                </div>
+
+                {/* Row f'(x) */}
+                <div className="grid grid-cols-4 py-1.5 px-2 border-b border-white/10 items-center text-center">
+                  <span className="text-left text-slate-400 font-bold font-sans">f'(x)</span>
+                  <span>{a > 0 ? "-" : "+"}</span>
+                  <span>0</span>
+                  <span className="text-right">{a > 0 ? "+" : "-"}</span>
+                </div>
+
+                {/* Row f(x) with arrows */}
+                <div className="grid grid-cols-4 py-3 px-2 items-center bg-white/5 h-16 text-center">
+                  <span className="text-left text-slate-400 font-bold font-sans">f(x)</span>
+                  <span className="self-center">{c}</span>
+                  <span className={a > 0 ? "self-end text-orange-400" : "self-start text-orange-400"}>
+                    <div className="text-[8px] font-sans opacity-70">{a > 0 ? "អប្បបរមា" : "អតិបរមា"}</div>
+                    {exp_y_val.toFixed(1)}
+                  </span>
+                  <span className={a > 0 ? "self-start text-right" : "self-end text-right"}>{a > 0 ? "+∞" : "-∞"}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {funcType === "logarithmic" && (() => {
+            const hasExtr = a !== 0 && (-c / a) > 0;
+            const extX = hasExtr ? -c / a : 1;
+            const extY = hasExtr ? a * extX + b + c * Math.log(extX) : 0;
+
+            return (
+              <div className="border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
+                {/* Header x */}
+                <div className="grid grid-cols-4 bg-black/40 text-slate-400 font-bold py-1.5 px-2 border-b border-white/10 text-center">
+                  <span className="text-left font-sans">x</span>
+                  <span className="text-cyan-400 font-bold">0</span>
+                  <span className="text-orange-400">{hasExtr ? extX.toFixed(1) : ""}</span>
+                  <span className="text-right">+∞</span>
+                </div>
+
+                {/* Row f'(x) */}
+                <div className="grid grid-cols-4 py-1.5 px-2 border-b border-white/10 items-center text-center">
+                  <span className="text-left text-slate-400 font-bold font-sans">f'(x)</span>
+                  <span className="text-cyan-400 font-bold">||</span>
+                  <span>{hasExtr ? "0" : ""}</span>
+                  <span className="text-right">
+                    {hasExtr ? (a > 0 ? "+" : "-") : (a > 0 ? "+" : "-")}
+                  </span>
+                </div>
+
+                {/* Row f(x) with arrows */}
+                <div className="grid grid-cols-4 py-3 px-2 items-center bg-white/5 h-16 text-center">
+                  <span className="text-left text-slate-400 font-bold font-sans">f(x)</span>
+                  <span className="text-cyan-400 font-bold flex flex-col justify-center h-12 text-[10px]">
+                    <span>||</span>
+                    <span>{c > 0 ? "-∞" : "+∞"}</span>
+                  </span>
+                  {hasExtr ? (
+                    <span className={a > 0 ? "self-end text-orange-400" : "self-start text-orange-400"}>
+                      <div className="text-[8px] font-sans opacity-70">{a > 0 ? "អប្បបរមា" : "អតិបរមា"}</div>
+                      {extY.toFixed(1)}
+                    </span>
+                  ) : (
+                    <span></span>
+                  )}
+                  <span className={a > 0 ? "self-start text-right" : "self-end text-right"}>{a > 0 ? "+∞" : "-∞"}</span>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="text-[10px] text-slate-400 leading-relaxed font-sans bg-black/20 p-2.5 rounded border border-white/5">
-            <strong>វិភាគក្រាហ្វ៖</strong> ប៉ារ៉ាបូលមានកំពូលត្រង់កូអរដោនេ <span className="text-white font-mono">I({x_crit.toFixed(1)}, {y_crit.toFixed(1)})</span> ដែលជាចំណុច {a > 0 ? "អប្បបរមា ( concave up )" : "អតិបរមា ( concave down )"}។
+            {funcType === "quadratic" && (
+              <>
+                <strong>វិភាគក្រាប៖</strong> ប៉ារ៉ាបូលមានកំពូលត្រង់កូអរដោនេ <span className="text-white font-mono">I({x_crit.toFixed(1)}, {y_crit.toFixed(1)})</span> ដែលជាចំណុច {a > 0 ? "អប្បបរមា ( concave up )" : "អតិបរមា ( concave down )"}។
+              </>
+            )}
+            {funcType === "rational" && (() => {
+              const D_val = a * (a + b + c);
+              const hasExtr = D_val > 0 && a !== 0;
+              const x1_val = hasExtr ? 1 - Math.sqrt(D_val) / Math.abs(a) : 0;
+              const x2_val = hasExtr ? 1 + Math.sqrt(D_val) / Math.abs(a) : 0;
+              const y1_val = hasExtr ? (a * x1_val * x1_val + b * x1_val + c) / (x1_val - 1) : 0;
+              const y2_val = hasExtr ? (a * x2_val * x2_val + b * x2_val + c) / (x2_val - 1) : 0;
+              return (
+                <>
+                  <strong>វិភាគក្រាប៖</strong> អនុគមន៍សនិទានមានអាស៉ីមតូតឈរ <span className="text-cyan-400 font-mono">x = 1</span> និងអាស៉ីមតូតទ្រត <span className="text-emerald-400 font-mono">y = {a === 1 ? "" : a === -1 ? "-" : a}x {a+b >= 0 ? "+" : "-"} {Math.abs(a+b)}</span>។
+                  {hasExtr ? (
+                    <span> មានចំណុចបរមាពីរគឺ អតិបរមាត្រង់ <span className="text-orange-400">({x1_val.toFixed(1)}, {y1_val.toFixed(1)})</span> និងអប្បបរមាត្រង់ <span className="text-orange-400">({x2_val.toFixed(1)}, {y2_val.toFixed(1)})</span>។</span>
+                  ) : (
+                    <span> គ្មានចំណុចបរមាទេ (ខ្សែកោងកើនឡើង ឬចុះក្រោមជានិច្ច)។</span>
+                  )}
+                </>
+              );
+            })()}
+            {funcType === "exponential" && (() => {
+              const exp_x_val = a !== 0 ? -1 - b / a : 0;
+              const exp_y_val = a !== 0 ? (a * exp_x_val + b) * Math.exp(exp_x_val) + c : 0;
+              return (
+                <>
+                  <strong>វិភាគក្រាប៖</strong> អនុគមន៍អិចស្ប៉ូណង់ស្យែលលាយពហុធាមានអាស៉ីមតូតដេក <span className="text-emerald-400 font-mono">y = {c}</span> (នៅពេល x → -∞)។
+                  {a !== 0 && (
+                    <span> មានចំណុចបរមាមួយត្រង់កូអរដោនេ <span className="text-orange-400">({exp_x_val.toFixed(1)}, {exp_y_val.toFixed(1)})</span> ដែលជាចំណុច {a > 0 ? "អប្បបរមា" : "អតិបរមា"}។</span>
+                  )}
+                </>
+              );
+            })()}
+            {funcType === "logarithmic" && (() => {
+              const hasExtr = a !== 0 && (-c / a) > 0;
+              const extX = hasExtr ? -c / a : 0;
+              const extY = hasExtr ? a * extX + b + c * Math.log(extX) : 0;
+              return (
+                <>
+                  <strong>វិភាគក្រាប៖</strong> អនុគមន៍លោការីតនេពែលាយពហុធាមានដែនកំណត់ចំពោះ <span className="text-cyan-400 font-mono">x &gt; 0</span> និងមានអាស៉ីមតូតឈរ <span className="text-cyan-400 font-mono">x = 0</span> (អ័ក្សអរដោនេ)។
+                  {hasExtr ? (
+                    <span> មានចំណុចបរមាមួយត្រង់ <span className="text-orange-400 font-mono">({extX.toFixed(1)}, {extY.toFixed(1)})</span>។</span>
+                  ) : (
+                    <span> គ្មានចំណុចបរមាទេ ព្រោះដេរីវេមានសញ្ញាវិជ្ជមាន ឬអវិជ្ជមានជានិច្ចក្នុងដែនកំណត់។</span>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
